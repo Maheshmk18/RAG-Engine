@@ -2,7 +2,6 @@ from datetime import datetime
 from typing import Optional
 from pydantic import BaseModel
 
-
 class DocumentOut(BaseModel):
     id: int
     filename: str

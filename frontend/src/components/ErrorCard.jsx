@@ -31,4 +31,3 @@ export function ErrorCard({ type, message, onRetry }) {
     </div>
   );
 }
-

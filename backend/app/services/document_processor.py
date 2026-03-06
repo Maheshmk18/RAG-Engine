@@ -7,7 +7,6 @@ import tiktoken
 
 from ..core.config import settings
 
-
 class DocumentProcessor:
     def __init__(self):
         self.chunk_size = settings.CHUNK_SIZE
@@ -68,6 +67,5 @@ class DocumentProcessor:
         chunks = self.chunk_text(text)
         content_hash = self.get_file_hash(file_path)
         return chunks, content_hash
-
 
 document_processor = DocumentProcessor()

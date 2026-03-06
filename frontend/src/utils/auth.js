@@ -12,7 +12,6 @@ export function clearAuth() {
   localStorage.removeItem("user");
 }
 
-// Aliases for compatibility across components
 export const logout = clearAuth;
 export const removeToken = clearAuth;
 

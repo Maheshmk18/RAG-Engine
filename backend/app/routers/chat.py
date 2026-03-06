@@ -16,9 +16,7 @@ from ..rag.llm_handler import get_llm_provider
 from ..rag.graph import build_graph, stream_graph_events
 from ..config import get_settings
 
-
 router = APIRouter(prefix="/chat", tags=["Chat"])
-
 
 def get_compiled_graph():
     settings = get_settings()
@@ -27,7 +25,6 @@ def get_compiled_graph():
     llm = get_llm_provider()
     graph = build_graph(embeddings=embeddings, vector_store=vector_store, llm=llm, top_k=settings.top_k)
     return graph
-
 
 @router.post("/", response_model=ChatResponse)
 def chat(
@@ -71,7 +68,6 @@ def chat(
     session.updated_at = assistant.created_at
     db.commit()
     return ChatResponse(session_id=session.id, response=response_text, sources=sources)
-
 
 @router.post("/stream")
 async def chat_stream(
@@ -140,7 +136,6 @@ async def chat_stream(
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-
 @router.get("/sessions", response_model=List[ChatSessionOut])
 def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     sessions = (
@@ -150,7 +145,6 @@ def list_sessions(db: Session = Depends(get_db), current_user: User = Depends(ge
         .all()
     )
     return sessions
-
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionOut)
 def get_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -162,7 +156,6 @@ def get_session(session_id: int, db: Session = Depends(get_db), current_user: Us
     if not session:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found")
     return session
-
 
 @router.delete("/sessions/{session_id}")
 def delete_session(session_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

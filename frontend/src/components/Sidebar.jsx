@@ -63,4 +63,3 @@ export function Sidebar({ sessions, currentSessionId, onNew, onSelect, onDelete 
     </aside>
   );
 }
-

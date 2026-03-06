@@ -80,6 +80,443 @@ const ROLE_CONFIG = {
   }
 };
 
+const PREDEFINED_ANSWERS = {
+  'What is the annual leave policy?': `## Annual Leave Policy
+
+**Entitlement:**
+- Employees are entitled to **21 days of paid annual leave** per calendar year.
+- New employees accrue leave at a rate of **1.75 days per month**.
+- Leave not taken within the year may be carried over (maximum **5 days** carry-over).
+
+**Eligibility:**
+- Full-time employees are eligible after completing **3 months** of probation.
+- Part-time employees receive pro-rated leave based on their working hours.
+
+**Applying for Leave:**
+1. Submit a leave request through the **HR Portal** at least **5 working days** in advance.
+2. Obtain line manager approval before confirming travel arrangements.
+3. Ensure handover notes are completed before leaving.
+
+**Public Holidays:**
+- All public holidays are in addition to your annual leave entitlement.
+- If a public holiday falls on a weekend, the next working day is observed.
+
+> For urgent queries, contact HR at **hr@company.com** or extension **1200**.`,
+
+  'Explain maternity benefits': `## Maternity Benefits
+
+**Maternity Leave:**
+- Eligible employees receive **26 weeks** of maternity leave.
+- First **13 weeks** are paid at **full salary**.
+- Remaining 13 weeks at **50% salary** (or statutory minimum, whichever is higher).
+
+**Eligibility:**
+- Employee must have completed at least **12 months** of continuous service.
+- Notice must be given at least **8 weeks** before the expected due date.
+
+**Benefits During Leave:**
+- **Health insurance** continues at full employer contribution.
+- **Pension contributions** are maintained throughout the leave period.
+- Annual leave continues to **accrue** during maternity leave.
+
+**Return to Work:**
+- The same or equivalent role is guaranteed upon return.
+- **Flexible working** arrangements may be requested.
+- **Phased return** (gradual increase in hours) is supported for up to 4 weeks.
+
+**Additional Support:**
+- **Nursing facilities** available on-site (dedicated room).
+- **Employee Assistance Program (EAP)** counselling available.
+
+> Contact the HR team at **hr@company.com** for a confidential maternity planning meeting.`,
+
+  'How does the onboarding process work?': `## Employee Onboarding Process
+
+### Week 1 – Orientation
+- **Day 1:** Welcome meeting with HR, IT setup, office tour, and ID/access card issuance.
+- **Day 2–3:** Department introduction, meet team members, set up workstation.
+- **Day 4–5:** Overview of company policies, compliance training, and safety induction.
+
+### Week 2 – Role Induction
+- Shadowing sessions with your direct team.
+- Introduction to tools, systems, and workflows specific to your role.
+- First 1-on-1 meeting with your line manager to set 30-day goals.
+
+### Month 1 – Integration
+- Attend all relevant team meetings and stand-ups.
+- Complete mandatory **e-learning modules** (compliance, security, DEI).
+- Mid-point check-in with HR at the **2-week mark**.
+
+### Month 2–3 – Probation Review
+- Regular feedback sessions with your manager.
+- Set **90-day objectives** aligned with your role.
+- Final probation review meeting with HR and line manager.
+
+**Key Contacts During Onboarding:**
+| Contact | Purpose |
+|---|---|
+| HR Business Partner | Policies, benefits, paperwork |
+| IT Helpdesk (ext. 1100) | System access, equipment |
+| Line Manager | Role expectations, team introduction |
+
+> Questions? Email **onboarding@company.com**`,
+
+  'What are the performance review guidelines?': `## Performance Review Guidelines
+
+**Review Cycles:**
+- **Mid-Year Review:** Conducted in **July** (informal check-in and goal adjustment).
+- **Annual Review:** Conducted in **January** (formal evaluation and rating).
+
+**Rating Scale:**
+| Rating | Description |
+|---|---|
+| 5 – Exceptional | Consistently exceeds all expectations |
+| 4 – Exceeds Expectations | Frequently surpasses targets |
+| 3 – Meets Expectations | Delivers all required outcomes |
+| 2 – Needs Improvement | Some areas require development |
+| 1 – Unsatisfactory | Consistently below expectations |
+
+**Process:**
+1. **Self-Assessment** submitted by employee (2 weeks before review date).
+2. **Manager Assessment** completed independently.
+3. **Calibration session** held at department level for consistency.
+4. **One-on-One Review Meeting** – discussion of ratings and feedback.
+5. **Development Plan** agreed and documented in the HR system.
+
+**What is Evaluated:**
+- Goal achievement (50% weighting)
+- Competency/behavioural standards (30% weighting)
+- Team collaboration and values alignment (20% weighting)
+
+**Outcome:**
+- Ratings directly influence **salary reviews** and **bonus eligibility**.
+- Ratings of 2 or below trigger a **Performance Improvement Plan (PIP)**.
+
+> For guidance on writing your self-assessment, see the **HR Resources** section on the intranet.`,
+
+  'Summarize all uploaded documents': `## Knowledge Base Document Summary
+
+### Currently Indexed Documents
+
+The knowledge base contains enterprise documents across the following categories:
+
+**HR & People Policies**
+- Annual Leave Policy
+- Maternity & Paternity Benefits
+- Performance Review Framework
+- Employee Onboarding Guide
+- Code of Conduct
+
+**Compliance & Legal**
+- Data Protection Policy (GDPR)
+- Anti-Bribery & Corruption Policy
+- Whistleblowing Policy
+- Information Security Policy
+
+**Operations & Finance**
+- Expense Reimbursement Policy
+- Budget Approval Procedures
+- Procurement Guidelines
+
+**IT & Security**
+- Acceptable Use Policy
+- Remote Access Guidelines
+- Incident Response Procedure
+
+> **Note:** This summary reflects the documents hardcoded as examples. Upload actual documents via the **Admin Dashboard** to index real content into the knowledge base.`,
+
+  'What policies are in the knowledge base?': `## Policies in the Knowledge Base
+
+The following policy documents are available for querying:
+
+### HR Policies
+- Annual Leave & Holiday Policy
+- Flexible & Remote Working Policy
+- Maternity, Paternity & Adoption Leave
+- Disciplinary & Grievance Procedure
+- Performance Management Framework
+
+### IT & Security Policies
+- Acceptable Use Policy (AUP)
+- Information Security Policy
+- Data Classification Policy
+- Remote Access & VPN Policy
+- Bring Your Own Device (BYOD) Policy
+
+### Finance & Operations
+- Expense Claim & Reimbursement Policy
+- Travel & Accommodation Policy
+- Procurement & Purchasing Policy
+- Budget Control Framework
+
+### Legal & Compliance
+- GDPR / Data Protection Policy
+- Anti-Money Laundering (AML) Policy
+- Anti-Bribery & Corruption Policy
+- Equal Opportunities & DEI Policy
+
+> Admins can upload additional policy documents via the **Document Management** section of the dashboard.`,
+
+  'Show system overview': `## System Overview
+
+### Enterprise RAG System Status
+
+| Component | Status | Details |
+|---|---|---|
+| Vector Store | Active | Pinecone (us-east-1) |
+| AI Provider | Active | Google Gemini 2.0 Flash |
+| Embedding Model | Active | Gemini Embedding 001 (3072-dim) |
+| Database | Connected | PostgreSQL (Neon Cloud) |
+| API Server | Running | FastAPI on port 8002 |
+| Frontend | Running | React + Vite on port 5173 |
+
+### Users & Access
+- **Roles Supported:** Admin, HR, Manager, Employee
+- **Authentication:** JWT Bearer Token
+- **Session Management:** Active sessions tracked in DB
+
+### Document Processing Pipeline
+1. Upload → Text Extraction → Chunking → Embedding → Pinecone Index
+2. Retrieval → Grading → LLM Generation → Hallucination Check → Response
+
+### Top K Retrieval Setting
+- Currently configured to retrieve top **5** most relevant chunks per query.`,
+
+  'List all document categories': `## Document Categories
+
+Documents in the knowledge base are organized into the following categories:
+
+1. **Human Resources** – Leave, benefits, onboarding, performance
+2. **Compliance & Legal** – GDPR, anti-bribery, whistleblowing
+3. **Information Technology** – Security, acceptable use, remote access
+4. **Finance & Operations** – Expenses, budgets, procurement
+5. **Health & Safety** – Workplace safety, emergency procedures
+6. **Learning & Development** – Training paths, certification policies
+
+> Use the **Document Management** panel to filter and search by category, or upload new documents to any category.`,
+
+  'What are the budget approval procedures?': `## Budget Approval Procedures
+
+### Approval Thresholds
+| Amount | Approver Required |
+|---|---|
+| Up to £1,000 | Line Manager |
+| £1,001 – £10,000 | Department Head |
+| £10,001 – £50,000 | Finance Director |
+| Above £50,000 | Executive Committee |
+
+### Steps to Request Budget Approval
+1. **Raise a Purchase Request (PR)** in the finance system with full justification.
+2. Attach supporting documentation (quotes, business case, ROI analysis).
+3. Submit to your **line manager** for first-level approval.
+4. The request is auto-routed for additional approvals based on the amount.
+5. Finance team processes PO upon full approval (typically **3–5 working days**).
+
+### Tips for Faster Approval
+- Include at least **3 competitive quotes** for purchases above £5,000.
+- Clearly state the **business justification** and expected ROI.
+- Reference the relevant **budget code** from your department cost centre.
+
+> For urgent approvals, contact the Finance team at **finance@company.com** or ext. **1300**.`,
+
+  'How do I handle conflict resolution?': `## Conflict Resolution Guidelines for Managers
+
+### Core Principle
+Address conflicts **early and directly**. Unresolved conflict impacts team morale, productivity, and retention.
+
+### Step-by-Step Resolution Process
+
+**Step 1 – Early Identification**
+- Watch for signs: tension in meetings, reduced collaboration, complaints.
+- Act within **48 hours** of becoming aware of an issue.
+
+**Step 2 – Individual Meetings**
+- Meet with each party separately to understand their perspective.
+- Listen actively — do not judge or take sides.
+
+**Step 3 – Facilitated Discussion**
+- Bring parties together in a neutral setting.
+- Establish ground rules: respect, no interruptions, focus on behaviour not personality.
+
+**Step 4 – Agree on Actions**
+- Document agreed steps and responsibilities.
+- Set a **follow-up review date** (usually 2 weeks).
+
+**Step 5 – Escalation**
+- If unresolved, escalate to **HR Business Partner**.
+- Formal grievance procedures may be initiated if required.
+
+### When to Escalate Immediately
+- Allegations of **harassment, discrimination, or bullying**.
+- Situations involving **legal or safety risk**.
+
+> Contact HR at **hr@company.com** for a confidential discussion.`,
+
+  'Explain resource allocation guidelines': `## Resource Allocation Guidelines
+
+### Principles
+- Resources should be allocated based on **business priority**, **availability**, and **capability**.
+- Use the **Capacity Planning Tool** in the project management system to plan allocations.
+
+### Allocation Process
+1. **Identify requirements** – Define skill sets, hours, and timelines needed.
+2. **Check availability** – Review team capacity dashboards for the planning period.
+3. **Submit allocation request** – Use the Resource Management System (RMS).
+4. **Manager approval** – Department head confirms and approves the allocation.
+5. **Communication** – Notify the allocated employee and update project plans.
+
+### Key Rules
+- No employee should be allocated more than **80% of their time** to a single project (to allow for BAU work).
+- Temporary **cross-department allocations** require written agreement from both managers.
+- Contractor requests must go through **Procurement** with a valid PO.
+
+### Tools Available
+- **Resource Dashboard** – Live view of team utilization
+- **Gantt Planner** – Timeline-based allocation view
+- **Skills Matrix** – Match resources to requirements
+
+> For help, contact the PMO: **pmo@company.com**`,
+
+  'What are managerial KPIs?': `## Managerial Key Performance Indicators (KPIs)
+
+### People Management KPIs
+| KPI | Target |
+|---|---|
+| Team Attrition Rate | < 10% annually |
+| Employee Engagement Score | > 75% (survey) |
+| Time-to-Fill Vacancies | < 45 days |
+| Absenteeism Rate | < 3% monthly |
+
+### Operational KPIs
+| KPI | Target |
+|---|---|
+| On-Time Project Delivery | > 85% |
+| Budget Adherence | ±5% of approved budget |
+| Utilisation Rate | 75–80% of team capacity |
+| SLA Compliance | > 95% |
+
+### Performance & Development KPIs
+| KPI | Target |
+|---|---|
+| Performance Reviews Completed | 100% on schedule |
+| Training Hours per Employee | Minimum 20 hrs/year |
+| Succession Plans in Place | 100% for critical roles |
+
+> KPIs are reviewed **quarterly** by the Operations Director. Managers should track these in the **Management Dashboard** and report variances with a root-cause analysis.`,
+
+  'What is the holiday schedule?': `## Holiday Schedule
+
+### Public Holidays (Current Year)
+| Date | Holiday |
+|---|---|
+| 1 January | New Year's Day |
+| 18 April | Good Friday |
+| 21 April | Easter Monday |
+| 5 May | Early May Bank Holiday |
+| 26 May | Spring Bank Holiday |
+| 25 August | Summer Bank Holiday |
+| 25 December | Christmas Day |
+| 26 December | Boxing Day |
+
+### Company-Specific Days
+- The company observes **2 additional discretionary days** per year (dates announced by HR in Q4 for the following year).
+
+### Key Rules
+- Public holidays are **in addition** to your annual leave entitlement.
+- If a holiday falls on a weekend, the **next working day** is the substitute day.
+- Employees in different regions should check with HR for **regional variations**.
+
+> The full holiday calendar is available on the **Company Intranet** under HR Resources.`,
+
+  'How do I submit an expense report?': `## Submitting an Expense Report
+
+### Step-by-Step Process
+
+1. **Collect all receipts** – Keep originals; photos accepted via the expense app.
+2. **Log into the Expense Portal** at **expenses.company.com** (or via the mobile app).
+3. **Create a new claim** – Select the expense category and date.
+4. **Upload receipts** – Attach scanned/photographed images of all receipts.
+5. **Add business justification** – Briefly describe the business purpose.
+6. **Submit for approval** – Claim is sent automatically to your line manager.
+7. **Reimbursement** – Approved claims are paid in the **next payroll cycle** (within 30 days).
+
+### What Can Be Claimed?
+- Travel (rail, flights, taxis) – economy class only for domestic travel
+- Accommodation – up to **£150/night** (pre-approved for higher amounts)
+- Meals – up to **£35/day** when travelling
+- Client entertainment – requires **senior manager approval**
+
+### What Cannot Be Claimed?
+- Alcohol (unless part of an approved client entertainment budget)
+- Personal items or fines
+- Journeys to/from your normal place of work (commuting)
+
+> **Deadline:** Submit expenses within **30 days** of the spend. Late submissions may not be reimbursed. Questions? Email **expenses@company.com**`,
+
+  'Explain the remote work policy': `## Remote Work Policy
+
+### Eligibility
+- All **permanent employees** who have completed their probation period are eligible for remote working arrangements.
+- Eligibility is subject to role suitability (some roles require on-site presence).
+
+### Standard Arrangements
+- **Hybrid model:** Minimum **3 days in the office** per week (specific days agreed with your manager).
+- Fully remote arrangements may be considered on a **case-by-case basis** with written approval from HR and department head.
+
+### Employee Responsibilities
+- Maintain a **secure, private workspace** at home.
+- Be **contactable and available** during core hours (9am – 5pm, Monday–Friday).
+- Attend **all scheduled meetings** (in-person or via video call).
+- Use **company-approved tools** only (VPN required when accessing company systems).
+
+### Equipment
+- The company provides a **laptop and essential peripherals**.
+- A **£250 home office allowance** is available once per year (claim via expenses).
+- Employees are responsible for their own internet connection.
+
+### Data Security While Remote
+- Always connect via **company VPN**.
+- Do not use public Wi-Fi without VPN.
+- Lock your screen when stepping away.
+- Never print confidential documents on a personal printer.
+
+> To formalise a remote working arrangement, complete the **Remote Work Agreement Form** available on the HR Portal.`,
+
+  'What are the company values?': `## Company Values & Culture
+
+Our five core values guide everything we do — from how we make decisions to how we treat each other.
+
+---
+
+### 1. Integrity
+> *We do what is right, not what is easy.*
+- We are honest and transparent in all our interactions.
+- We take accountability for our actions and decisions.
+
+### 2. Innovation
+> *We embrace change and continuously improve.*
+- We encourage creative thinking and experimentation.
+- We learn from failure and celebrate progress.
+
+### 3. Collaboration
+> *We achieve more together than apart.*
+- We respect diverse perspectives and backgrounds.
+- We share knowledge openly and support each other's success.
+
+### 4. Customer Focus
+> *Our customers are at the heart of everything we do.*
+- We listen to feedback and act on it.
+- We deliver quality with care and consistency.
+
+### 5. Excellence
+> *We hold ourselves to the highest standards.*
+- We take pride in our work and strive to exceed expectations.
+- We invest in our own development and that of our colleagues.
+
+---
+
+> These values are embedded in our **performance reviews**, **hiring criteria**, and **leadership principles**. For more, visit the **Culture & Values** section on the intranet.`
+};
 
 const ROLE_LABELS = {
   admin: 'System Administrator',
@@ -161,12 +598,36 @@ export default function Chat() {
     textareaRef.current?.focus();
   };
 
-  const handleSubmit = async (e, directText) => {
+  const handleSubmit = async (e, directText, usePredefined = false) => {
     e?.preventDefault();
     const trimmed = (directText ?? input).trim();
     if (!trimmed || loading) return;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', content: trimmed }]);
+
+    const predefinedAnswer = PREDEFINED_ANSWERS[trimmed];
+    if (predefinedAnswer) {
+      setLoading(true);
+      setMessages(prev => [...prev, { role: 'assistant', content: '', thinking: true }]);
+      
+      // Artificial delay of 2 seconds as requested by the user
+      setTimeout(() => {
+        setMessages(prev => {
+          const u = [...prev];
+          u[u.length - 1] = { 
+            role: 'assistant', 
+            content: predefinedAnswer, 
+            thinking: false, 
+            sources: [] 
+          };
+          return u;
+        });
+        setLoading(false);
+        fetchSessions();
+      }, 2000);
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -287,7 +748,6 @@ export default function Chat() {
 
         .app-container { display: flex; height: 100vh; overflow: hidden; }
 
-        /* ── SIDEBAR ── */
         .sidebar {
           width: 300px; min-width: 300px;
           background: var(--sidebar-bg);
@@ -355,10 +815,8 @@ export default function Chat() {
         .footer-action:hover { background: rgba(255,255,255,0.05); color: #fff; }
         .footer-action.danger:hover { background: rgba(239, 68, 68, 0.1); color: #fca5a5; }
 
-        /* ── MAIN CONTENT ── */
         .main-content { flex: 1; display: flex; flex-direction: column; background: #fdfdff; position: relative; }
 
-        /* TOPBAR */
         .header {
           height: 70px; display: flex; align-items: center; justify-content: space-between;
           padding: 0 24px; border-bottom: 1px solid var(--border-color); background: #fff;
@@ -374,7 +832,6 @@ export default function Chat() {
         .status-text h3 { font-size: 14px; font-weight: 700; color: var(--text-primary); }
         .status-text p { font-size: 10px; color: var(--text-muted); font-weight: 600; }
 
-        /* MESSAGES AREA */
         .chat-area { flex: 1; overflow-y: auto; padding: 40px 24px; scroll-behavior: smooth; }
         .chat-area::-webkit-scrollbar { width: 5px; }
         .chat-area::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 10px; }
@@ -404,7 +861,6 @@ export default function Chat() {
         .suggestion-card h4 { font-size: 14px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
         .suggestion-card p { font-size: 12px; color: #64748b; line-height: 1.5; }
 
-        /* MESSAGE BUBBLES */
         .message-list { max-width: 850px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
         .msg-row { display: flex; gap: 20px; }
         .msg-row.user-msg { flex-direction: row-reverse; }
@@ -423,7 +879,6 @@ export default function Chat() {
         .assistant-bubble { background: #fff; color: #1e293b; border: 1px solid #edf2f7; border-bottom-left-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
         .user-bubble { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: #fff; border-bottom-right-radius: 4px; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2); }
 
-        /* SOURCES SECTION */
         .sources-area {
             margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9;
         }
@@ -436,7 +891,6 @@ export default function Chat() {
         }
         .source-chip:hover { border-color: var(--accent-primary); background: #f5f3ff; color: var(--accent-primary); }
 
-        /* INPUT AREA */
         .input-view { padding: 24px 24px 32px; background: #fff; border-top: 1px solid var(--border-color); z-index: 10; }
         .input-container { max-width: 850px; margin: 0 auto; position: relative; }
         .input-box {
@@ -462,7 +916,6 @@ export default function Chat() {
 
         .input-footer { text-align: center; margin-top: 12px; font-size: 11px; color: #94a3b8; font-weight: 500; }
 
-        /* ANIMATIONS */
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .msg-row { animation: fadeIn 0.4s ease-out backwards; }
 
@@ -472,7 +925,6 @@ export default function Chat() {
         .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
         @keyframes blink { 0%, 80%, 100% { opacity: 0.4; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
 
-        /* PROSE OVERRIDES */
         .prose pre { background: #0f172a; border-radius: 12px; padding: 16px; color: #e2e8f0; margin: 12px 0; }
         .prose code { background: #f1f5f9; color: #6366f1; padding: 2px 4px; border-radius: 4px; font-size: 0.9em; }
         .prose blockquote { border-left: 4px solid var(--accent-primary); padding-left: 16px; color: var(--text-muted); font-style: italic; }

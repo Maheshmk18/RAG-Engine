@@ -20,7 +20,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 ALLOWED_EXTENSIONS = {"pdf", "docx", "txt"}
 
-
 class DocumentResponse(BaseModel):
     id: int
     filename: str
@@ -34,10 +33,8 @@ class DocumentResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 def get_file_extension(filename: str) -> str:
     return filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
-
 
 @router.post("/upload", response_model=DocumentResponse)
 async def upload_document(
@@ -141,7 +138,6 @@ def process_document_task(
     finally:
         db.close()
 
-
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
     db: Session = Depends(get_db),
@@ -150,7 +146,6 @@ def list_documents(
     """List all documents. All users can see all documents."""
     documents = db.query(Document).all()
     return documents
-
 
 @router.get("/{document_id}", response_model=DocumentResponse)
 def get_document(
@@ -168,7 +163,6 @@ def get_document(
         )
 
     return document
-
 
 @router.delete("/{document_id}")
 def delete_document(

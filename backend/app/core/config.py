@@ -2,7 +2,6 @@ import os
 from pydantic_settings import BaseSettings
 from typing import Optional
 
-
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Enterprise RAG Assistant"
     VERSION: str = "1.0.0"
@@ -23,6 +22,5 @@ class Settings(BaseSettings):
 
     class Config:
         case_sensitive = True
-
 
 settings = Settings()

@@ -7,18 +7,16 @@ from openai import OpenAI
 from ..config import get_settings
 from .nodes import LLMProvider
 
-
 class GeminiClientProvider(LLMProvider):
     def __init__(self, api_key: str):
         genai.configure(api_key=api_key)
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        self.model = genai.GenerativeModel("gemini-2.0-flash")
 
     def generate(self, prompt: str, stream: bool = False) -> Any:
         if stream:
             return self.model.generate_content(prompt, stream=True)
         result = self.model.generate_content(prompt)
         return result.text
-
 
 class OpenAIClientProvider(LLMProvider):
     def __init__(self, api_key: str):
@@ -33,7 +31,6 @@ class OpenAIClientProvider(LLMProvider):
         )
         return response
 
-
 class CompositeLLMProvider(LLMProvider):
     def __init__(self, primary: LLMProvider, fallback: LLMProvider | None):
         self.primary = primary
@@ -47,25 +44,31 @@ class CompositeLLMProvider(LLMProvider):
                 return self.fallback.generate(prompt, stream=stream)
             raise
 
-
 @lru_cache(maxsize=1)
 def get_llm_provider() -> LLMProvider:
     settings = get_settings()
     provider = settings.primary_ai_provider.lower()
+    
+    gemini_key = settings.gemini_api_key or settings.google_api_key
+    openai_key = settings.openai_api_key
+    
     primary: LLMProvider | None = None
     fallback: LLMProvider | None = None
-    if provider == "gemini" and settings.gemini_api_key:
-        primary = GeminiClientProvider(settings.gemini_api_key)
-        if settings.openai_api_key:
-            fallback = OpenAIClientProvider(settings.openai_api_key)
-    elif provider == "openai" and settings.openai_api_key:
-        primary = OpenAIClientProvider(settings.openai_api_key)
-        if settings.gemini_api_key:
-            fallback = GeminiClientProvider(settings.gemini_api_key)
-    elif settings.gemini_api_key:
-        primary = GeminiClientProvider(settings.gemini_api_key)
-    elif settings.openai_api_key:
-        primary = OpenAIClientProvider(settings.openai_api_key)
+    
+    if (provider == "gemini" or provider == "google") and gemini_key:
+        primary = GeminiClientProvider(gemini_key)
+        if openai_key:
+            fallback = OpenAIClientProvider(openai_key)
+    elif provider == "openai" and openai_key:
+        primary = OpenAIClientProvider(openai_key)
+        if gemini_key:
+            fallback = GeminiClientProvider(gemini_key)
+    elif gemini_key:
+        primary = GeminiClientProvider(gemini_key)
+    elif openai_key:
+        primary = OpenAIClientProvider(openai_key)
+        
     if primary is None:
-        raise RuntimeError("No LLM provider configured")
+        raise RuntimeError(f"No LLM provider configured. Provider: {provider}, Gemini Key: {bool(gemini_key)}, OpenAI Key: {bool(openai_key)}")
+    
     return CompositeLLMProvider(primary, fallback)

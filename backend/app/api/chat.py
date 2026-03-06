@@ -10,7 +10,6 @@ from ..database.models import User, ChatSession, ChatMessage
 from ..services.rag_pipeline import rag_pipeline
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[int] = None
@@ -106,7 +105,6 @@ def chat(
             detail=f"Error generating response: {str(e)}"
         )
 
-
 @router.post("/stream")
 async def chat_stream(
     request: ChatRequest,
@@ -184,9 +182,9 @@ async def chat_stream(
         except Exception as e:
             err_str = str(e)
             print(f"Streaming error: {e}")
-            if '429' in err_str or 'quota' in err_str.lower() or 'billing' in err_str.lower() or 'insufficient_quota' in err_str.lower():
+            if any(term in err_str.lower() for term in ['429', 'quota', 'billing', 'insufficient_quota', 'resourceexhausted']):
                 error_type = 'quota'
-                error_message = 'AI service quota exceeded. Please check your OpenAI billing or contact your administrator.'
+                error_message = 'AI service quota exceeded. Please check your AI provider billing or contact your administrator.'
             elif 'auth' in err_str.lower() or 'api_key' in err_str.lower() or '401' in err_str:
                 error_type = 'auth'
                 error_message = 'Invalid API key. Please check your AI provider credentials.'
@@ -202,7 +200,6 @@ async def chat_stream(
 
     return StreamingResponse(generate(), media_type="text/event-stream")
 
-
 @router.get("/sessions", response_model=List[ChatSessionResponse])
 def list_chat_sessions(
     db: Session = Depends(get_db),
@@ -212,7 +209,6 @@ def list_chat_sessions(
         ChatSession.user_id == current_user.id
     ).order_by(ChatSession.updated_at.desc()).all()
     return sessions
-
 
 @router.get("/sessions/{session_id}", response_model=ChatSessionResponse)
 def get_chat_session(
@@ -232,7 +228,6 @@ def get_chat_session(
         )
 
     return session
-
 
 @router.delete("/sessions/{session_id}")
 def delete_chat_session(

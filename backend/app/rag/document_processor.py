@@ -7,7 +7,6 @@ import tiktoken
 
 from ..config import get_settings
 
-
 class DocumentProcessor:
     def __init__(self):
         settings = get_settings()
@@ -67,6 +66,5 @@ class DocumentProcessor:
         chunks = self.chunk_text(text)
         digest = self.get_file_hash(file_path)
         return chunks, digest
-
 
 document_processor = DocumentProcessor()

@@ -25,4 +25,3 @@ export function MessageBubble({ role, content }) {
     </div>
   );
 }
-

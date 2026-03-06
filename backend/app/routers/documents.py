@@ -15,12 +15,9 @@ from ..rag.embeddings import get_embedding_provider
 from ..rag.vector_store import get_vector_store
 from ..config import get_settings
 
-
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
-
 ALLOWED_EXTENSIONS = {"pdf", "docx", "txt"}
-
 
 def get_extension(name: str) -> str:
     parts = name.rsplit(".", 1)
@@ -28,13 +25,11 @@ def get_extension(name: str) -> str:
         return parts[1].lower()
     return ""
 
-
 def get_upload_dir() -> str:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     path = os.path.join(base_dir, "uploads")
     os.makedirs(path, exist_ok=True)
     return path
-
 
 @router.post("/upload", response_model=DocumentOut)
 async def upload_document(
@@ -70,7 +65,6 @@ async def upload_document(
         return document
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
-
 
 def process_document_task(document_id: int, file_path: str, file_type: str, original_name: str):
     db = get_db().__next__()
@@ -122,12 +116,10 @@ def process_document_task(document_id: int, file_path: str, file_type: str, orig
     finally:
         db.close()
 
-
 @router.get("/", response_model=List[DocumentOut])
 def list_documents(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     items = db.query(Document).all()
     return items
-
 
 @router.get("/{document_id}", response_model=DocumentOut)
 def get_document(document_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -135,7 +127,6 @@ def get_document(document_id: int, db: Session = Depends(get_db), current_user: 
     if not document:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
     return document
-
 
 @router.delete("/{document_id}")
 def delete_document(document_id: int, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin_user)):

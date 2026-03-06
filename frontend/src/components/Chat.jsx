@@ -297,4 +297,3 @@ export function Chat({ sessions, currentSessionId, onSessionsChange, onSessionCh
     </div>
   );
 }
-

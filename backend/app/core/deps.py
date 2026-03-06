@@ -10,14 +10,12 @@ from .security import decode_token
 
 security = HTTPBearer()
 
-
 def get_db() -> Generator:
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
-
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -49,7 +47,6 @@ async def get_current_user(
 
     return user
 
-
 def require_roles(allowed_roles: List[str]):
     """Dependency factory that checks if user has one of the allowed roles"""
     async def role_checker(current_user: User = Depends(get_current_user)) -> User:
@@ -60,7 +57,6 @@ def require_roles(allowed_roles: List[str]):
             )
         return current_user
     return role_checker
-
 
 async def get_current_admin_user(
     current_user: User = Depends(get_current_user)

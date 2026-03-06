@@ -16,13 +16,11 @@ from ..database.models import User
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
     full_name: str = ""
-
 
 class UserResponse(BaseModel):
     id: int
@@ -34,7 +32,6 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
 
 @router.post("/register", response_model=UserResponse)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -64,12 +61,10 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
     return new_user
 
-
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str
     user: UserResponse
-
 
 @router.post("/login", response_model=LoginResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -99,7 +94,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         "token_type": "bearer",
         "user": user
     }
-
 
 @router.get("/me", response_model=UserResponse)
 def get_current_user_info(

@@ -11,7 +11,6 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 RoleType = Literal["admin", "manager", "hr", "employee"]
 
-
 class UserResponse(BaseModel):
     id: int
     username: str
@@ -25,14 +24,12 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
 class UserProfileUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
     profile_photo: Optional[str] = None
     password: Optional[str] = None
-
 
 class AdminUserUpdate(BaseModel):
     email: Optional[EmailStr] = None
@@ -41,7 +38,6 @@ class AdminUserUpdate(BaseModel):
     is_active: Optional[bool] = None
     role: Optional[RoleType] = None
 
-
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -49,14 +45,9 @@ class UserCreate(BaseModel):
     full_name: str = ""
     role: RoleType = "employee"
 
-
-
-
-
 @router.get("/me", response_model=UserResponse)
 def get_current_user_profile(current_user: User = Depends(get_current_user)):
     return current_user
-
 
 @router.put("/me", response_model=UserResponse)
 def update_current_user(
@@ -93,7 +84,6 @@ def update_current_user(
     db.refresh(current_user)
     return current_user
 
-
 @router.post("/", response_model=UserResponse)
 def create_user(
     user_in: UserCreate,
@@ -122,7 +112,6 @@ def create_user(
     db.refresh(new_user)
     return new_user
 
-
 @router.get("/", response_model=List[UserResponse])
 def list_users(
     db: Session = Depends(get_db),
@@ -130,7 +119,6 @@ def list_users(
 ):
     users = db.query(User).all()
     return users
-
 
 @router.get("/{user_id}", response_model=UserResponse)
 def get_user(
@@ -145,7 +133,6 @@ def get_user(
             detail="User not found"
         )
     return user
-
 
 @router.put("/{user_id}", response_model=UserResponse)
 def update_user(
@@ -188,7 +175,6 @@ def update_user(
     db.commit()
     db.refresh(user)
     return user
-
 
 @router.delete("/{user_id}")
 def delete_user(

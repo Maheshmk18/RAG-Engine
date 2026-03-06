@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional, Generator
 from ..rag.embeddings import get_embeddings_generator
 from ..rag.vector_store import get_vector_store
 from ..rag.llm import get_llm_handler
-
+from ..rag.predefined_answers import PREDEFINED_ANSWERS
 
 class RAGPipeline:
     def __init__(self):
@@ -73,6 +73,14 @@ class RAGPipeline:
         metadatas = []
 
         try:
+            predefined = PREDEFINED_ANSWERS.get(query)
+            if predefined:
+                print(f"[RAG ENGINE]: Predefined match for '{query}'")
+                return {
+                    "response": predefined,
+                    "sources": []
+                }
+
             if self.llm._is_casual_chat(query):
                 print(f"Casual chat detected: '{query}' - Skipping RAG lookup")
                 return {
@@ -151,6 +159,12 @@ class RAGPipeline:
         context = []
 
         try:
+            predefined = PREDEFINED_ANSWERS.get(query)
+            if predefined:
+                print(f"[RAG ENGINE]: Predefined match (stream) for '{query}'")
+                yield predefined
+                return
+
             if self.llm._is_casual_chat(query):
                 print(f"Casual chat detected (stream): '{query}'")
                 for chunk in self.llm.generate_response_stream(query, [], chat_history, user_role):
@@ -213,6 +227,5 @@ class RAGPipeline:
             self.vector_store.delete_by_document_id(document_id)
         except Exception as e:
             print(f"Error deleting document: {e}")
-
 
 rag_pipeline = RAGPipeline()

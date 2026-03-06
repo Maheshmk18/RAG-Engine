@@ -8,15 +8,12 @@ from ..schemas.user import UserOut, UserUpdate
 from ..utils.dependencies import get_current_admin_user
 from ..utils.auth import get_password_hash
 
-
 router = APIRouter(prefix="/users", tags=["Users"])
-
 
 @router.get("/", response_model=List[UserOut])
 def list_users(db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin_user)):
     users = db.query(User).all()
     return users
-
 
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(user_id: int, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin_user)):
@@ -24,7 +21,6 @@ def get_user(user_id: int, db: Session = Depends(get_db), current_admin: User = 
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
-
 
 @router.put("/{user_id}", response_model=UserOut)
 def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin_user)):
@@ -47,7 +43,6 @@ def update_user(user_id: int, user_in: UserUpdate, db: Session = Depends(get_db)
     db.commit()
     db.refresh(user)
     return user
-
 
 @router.delete("/{user_id}")
 def delete_user(user_id: int, db: Session = Depends(get_db), current_admin: User = Depends(get_current_admin_user)):

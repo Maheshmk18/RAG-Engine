@@ -1,15 +1,16 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings
 
-
 class Settings(BaseSettings):
     project_name: str = "Enterprise RAG Assistant"
     api_prefix: str = "/api/v1"
     database_url: str
-    jwt_secret_key: str
+    jwt_secret_key: str = "default-secret-if-missing"  # Default provided to prevent crash
+    session_secret: str | None = None
+    google_api_key: str | None = None
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24
-    primary_ai_provider: str = "gemini"
+    primary_ai_provider: str = "google"
     gemini_api_key: str | None = None
     openai_api_key: str | None = None
     huggingface_api_key: str | None = None
@@ -26,7 +27,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
-
+        extra = "ignore"  # Allow extra variables in .env without crashing
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -4,14 +4,14 @@ import {
     Shield, ArrowRight, Brain, FileText, Bot,
     Lock, Zap, Users, Building2,
     CheckCircle, Menu, X, Database, Sparkles, ChevronRight, Globe, BarChart3,
-    Search, Server, Cloud, Cpu, ArrowDownCircle, Layers
+    Search, Server, Cloud, Cpu, ArrowDownCircle, Layers, Plus, Minus
 } from 'lucide-react';
 
 const features = [
     {
         icon: Brain,
         title: 'Multi-Modal AI Engine',
-        desc: 'Built on Gemini 1.5 & GPT-4o. Our system dynamically routes queries based on context length and task complexity.',
+        desc: 'Built on Gemini 1.5 & GPT-4o. Dynamically routes queries based on context length and task complexity.',
         color: 'text-indigo-600', bg: 'bg-indigo-50'
     },
     {
@@ -53,13 +53,62 @@ const stats = [
     { value: '100+', label: 'Supported Formats' },
 ];
 
+const faqs = [
+    {
+        q: 'What types of documents does Enterprise RAG support?',
+        a: 'Enterprise RAG supports PDF, Microsoft Word (.docx), Excel (.xlsx), plain text (.txt), and more. Our smart ingestion pipeline uses OCR and layout-aware parsing to extract structured content from all major enterprise document formats.'
+    },
+    {
+        q: 'How does role-based access control (RBAC) work?',
+        a: 'Every user is assigned a role — Admin, HR, Manager, or Employee. Each role controls which documents can be uploaded, viewed, and queried. AI responses are automatically scoped to what the user is authorized to access, ensuring data privacy and compliance.'
+    },
+    {
+        q: 'Is my company data ever used to train AI models?',
+        a: 'No. Your documents and queries are never used to train any AI model. All data is processed in your isolated environment, and the AI only retrieves information from your uploaded documents — it never stores or shares data externally.'
+    },
+    {
+        q: 'Which AI models power the system?',
+        a: 'The platform supports Google Gemini 1.5 Flash/Pro as the primary AI provider, with OpenAI GPT-4o as a configurable fallback. The system automatically switches to the fallback if the primary provider is unavailable, ensuring zero downtime for your team.'
+    },
+    {
+        q: 'How accurate are the AI responses?',
+        a: 'All responses are grounded in your actual documents using Retrieval-Augmented Generation (RAG). The system retrieves the most relevant knowledge chunks, passes them as context to the LLM, and cites the source document. A hallucination-check layer further validates responses against retrieved content.'
+    },
+    {
+        q: 'Can I deploy this on my own infrastructure?',
+        a: 'Yes. Enterprise RAG is fully self-hostable. The backend is a FastAPI Python application and the frontend is a React app. You can deploy on any cloud provider (AWS, GCP, Azure) or on-premise. Environment variables control all external service integrations.'
+    },
+];
+
+function FAQItem({ q, a }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <div
+            className={`border border-gray-100 rounded-2xl overflow-hidden transition-all duration-300 ${open ? 'bg-white shadow-lg shadow-indigo-50' : 'bg-white hover:border-indigo-100'}`}
+        >
+            <button
+                onClick={() => setOpen(!open)}
+                className="w-full flex items-center justify-between px-8 py-6 text-left"
+            >
+                <span className="text-base font-bold text-slate-800 pr-4">{q}</span>
+                <span className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all duration-300 ${open ? 'bg-indigo-600 text-white rotate-180' : 'bg-slate-100 text-slate-500'}`}>
+                    {open ? <Minus size={14} /> : <Plus size={14} />}
+                </span>
+            </button>
+            <div className={`transition-all duration-300 overflow-hidden ${open ? 'max-h-60 opacity-100' : 'max-h-0 opacity-0'}`}>
+                <p className="px-8 pb-6 text-sm text-slate-500 leading-relaxed font-medium">{a}</p>
+            </div>
+        </div>
+    );
+}
+
 function LandingPage() {
     const navigate = useNavigate();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 30);
+        const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll);
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -72,78 +121,76 @@ function LandingPage() {
     return (
         <div className="min-h-screen bg-[#fcfdfe] font-['Outfit',sans-serif] antialiased text-[#111827]">
 
-            {/* ── TOP ANNOUNCEMENT ── */}
-            <div className="bg-slate-900 py-2.5 px-6 text-center">
-                <p className="text-[10px] font-bold text-white uppercase tracking-[0.2em] flex items-center justify-center gap-3">
-                    <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
-                    New: Gemini 1.5 Pro integration now active for all enterprise nodes
-                </p>
-            </div>
-
-            {/* ── NAVBAR ── */}
-            <nav className={`fixed top-12 left-1/2 -translate-x-1/2 w-[90%] max-w-7xl z-50 transition-all duration-500 rounded-2xl ${scrolled ? 'bg-white/80 backdrop-blur-xl border border-gray-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] py-3' : 'bg-transparent py-5'}`}>
-                <div className="px-8 flex items-center justify-between">
-                    <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
-                        <div className="w-10 h-10 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
-                            <Shield size={18} className="text-white" />
-                        </div>
-                        <div className="flex flex-col">
-                            <span className="font-extrabold text-slate-900 text-sm tracking-tight leading-none uppercase">Enterprise RAG</span>
-                            <span className="text-[9px] text-slate-400 font-bold tracking-widest mt-1">INDUSTRIAL INTELLIGENCE</span>
-                        </div>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-10">
-                        {[['Platform', 'platform'], ['Architecture', 'how-it-works'], ['Security', 'features']].map(([label, id]) => (
-                            <button key={id} onClick={() => scrollTo(id)} className="text-[13px] text-slate-500 hover:text-indigo-600 font-bold transition-colors uppercase tracking-wider">
-                                {label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-4">
-                        <button
-                            onClick={() => navigate('/login')}
-                            className="text-[13px] font-bold text-slate-600 hover:text-slate-900"
-                        >
-                            Sign In
-                        </button>
-                        <button
-                            onClick={() => navigate('/login')}
-                            className="px-6 py-2.5 bg-slate-900 text-white text-[13px] font-bold rounded-xl hover:bg-indigo-600 transition-all shadow-xl shadow-slate-100 active:scale-95"
-                        >
-                            Get Started
-                        </button>
-                    </div>
-
-                    <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600">
-                        {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
-                    </button>
+            <div className="fixed top-0 left-0 right-0 z-50">
+                <div className="bg-slate-900 py-2 px-6 text-center">
+                    <p className="text-[10px] font-bold text-white uppercase tracking-[0.2em] flex items-center justify-center gap-3">
+                        <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" />
+                        New: Gemini 1.5 Pro integration now active for all enterprise nodes
+                    </p>
                 </div>
 
-                {mobileMenuOpen && (
-                    <div className="md:hidden absolute top-full left-0 w-full bg-white/95 backdrop-blur-xl border border-gray-100 rounded-2xl mt-2 p-6 space-y-4 shadow-2xl">
-                        {[['Features', 'features'], ['Architecture', 'how-it-works']].map(([label, id]) => (
-                            <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left text-sm font-bold text-slate-600 py-2">
-                                {label}
+                <nav className={`w-full transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-xl shadow-[0_1px_0_0_rgba(0,0,0,0.06)] py-3' : 'bg-white/80 backdrop-blur-lg border-b border-gray-100 py-4'}`}>
+                    <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+                        <div className="flex items-center gap-3 cursor-pointer group" onClick={() => navigate('/')}>
+                            <div className="w-9 h-9 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200 group-hover:scale-105 transition-transform">
+                                <Shield size={16} className="text-white" />
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="font-extrabold text-slate-900 text-sm tracking-tight leading-none uppercase">Enterprise RAG</span>
+                                <span className="text-[9px] text-slate-400 font-bold tracking-widest mt-0.5">INDUSTRIAL INTELLIGENCE</span>
+                            </div>
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-10">
+                            {[['Platform', 'platform'], ['Architecture', 'how-it-works'], ['Features', 'features'], ['FAQ', 'faq']].map(([label, id]) => (
+                                <button key={id} onClick={() => scrollTo(id)} className="text-[13px] text-slate-500 hover:text-indigo-600 font-bold transition-colors uppercase tracking-wider">
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="hidden md:flex items-center gap-4">
+                            <button
+                                onClick={() => navigate('/login')}
+                                className="text-[13px] font-bold text-slate-600 hover:text-slate-900 transition-colors"
+                            >
+                                Sign In
                             </button>
-                        ))}
-                        <button onClick={() => navigate('/login')} className="block w-full py-4 bg-indigo-600 text-white text-sm font-bold rounded-xl text-center">
-                            Launch Platform
+                            <button
+                                onClick={() => navigate('/login')}
+                                className="px-5 py-2.5 bg-slate-900 text-white text-[13px] font-bold rounded-xl hover:bg-indigo-600 transition-all shadow-lg active:scale-95"
+                            >
+                                Get Started →
+                            </button>
+                        </div>
+
+                        <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 text-slate-600">
+                            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
                         </button>
                     </div>
-                )}
-            </nav>
 
-            {/* ── HERO ── */}
-            <section id="platform" className="relative pt-60 pb-32 overflow-hidden">
-                {/* Visual accents */}
+                    {mobileMenuOpen && (
+                        <div className="md:hidden absolute top-full left-0 w-full bg-white border-t border-gray-100 shadow-xl p-6 space-y-4">
+                            {[['Platform', 'platform'], ['Architecture', 'how-it-works'], ['Features', 'features'], ['FAQ', 'faq']].map(([label, id]) => (
+                                <button key={id} onClick={() => scrollTo(id)} className="block w-full text-left text-sm font-bold text-slate-600 py-2 border-b border-gray-50">
+                                    {label}
+                                </button>
+                            ))}
+                            <button onClick={() => navigate('/login')} className="block w-full py-4 bg-indigo-600 text-white text-sm font-bold rounded-xl text-center mt-2">
+                                Launch Platform
+                            </button>
+                        </div>
+                    )}
+                </nav>
+            </div>
+
+            <section id="platform" className="relative pt-40 pb-32 overflow-hidden">
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -z-10 w-full max-w-6xl aspect-square bg-[#eef2ff] rounded-full blur-[160px] opacity-40" />
 
                 <div className="max-w-7xl mx-auto px-6 text-center">
                     <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white border border-gray-100 shadow-sm rounded-full mb-10">
                         <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-pulse" />
-                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest italic">V2.4 Enterprise Deployment</span>
+                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">V2.4 Enterprise Deployment</span>
                     </div>
 
                     <h1 className="text-6xl md:text-8xl font-[1000] text-slate-900 leading-[0.95] tracking-[-0.04em] mb-8">
@@ -166,7 +213,7 @@ function LandingPage() {
                         </button>
                         <button
                             onClick={() => scrollTo('how-it-works')}
-                            className="px-10 py-5 bg-white border border-gray-100 text-slate-900 font-black rounded-2xl transition-all hover:bg-slate-50 shadow-sm border-b-4 border-b-slate-100 active:border-b-0 active:translate-y-1 flex items-center justify-center gap-3"
+                            className="px-10 py-5 bg-white border border-gray-200 text-slate-900 font-black rounded-2xl transition-all hover:bg-slate-50 shadow-sm active:translate-y-1 flex items-center justify-center gap-3"
                         >
                             Read Specification
                             <ChevronRight size={18} />
@@ -178,9 +225,9 @@ function LandingPage() {
                         <div className="relative bg-white rounded-[2rem] border border-gray-100 shadow-2xl overflow-hidden">
                             <div className="bg-slate-50 border-b border-gray-100 px-6 py-4 flex items-center justify-between">
                                 <div className="flex gap-1.5">
-                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
-                                    <div className="w-2.5 h-2.5 rounded-full bg-slate-200" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-rose-300" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-amber-300" />
+                                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-300" />
                                 </div>
                                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                                     Secure Session: NODE_ALPHA_04
@@ -224,7 +271,7 @@ function LandingPage() {
                                 </div>
                                 <div className="flex-1 bg-[#fdfdff] p-10 flex flex-col">
                                     <div className="flex-1 space-y-6">
-                                        <div className="flex justify-end animate-pulse">
+                                        <div className="flex justify-end">
                                             <div className="px-6 py-3 bg-indigo-600 text-white text-[13px] font-medium rounded-2xl rounded-tr-sm shadow-lg shadow-indigo-100">
                                                 Explain the cross-departmental impact of Project Orion.
                                             </div>
@@ -252,7 +299,6 @@ function LandingPage() {
                 </div>
             </section>
 
-            {/* ── STATS ── */}
             <section className="py-24 border-y border-gray-50 bg-white">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
@@ -266,7 +312,6 @@ function LandingPage() {
                 </div>
             </section>
 
-            {/* ── HOW IT WORKS (ARCHITECTURE) ── */}
             <section id="how-it-works" className="py-32 relative overflow-hidden bg-slate-900">
                 <div className="absolute inset-0 -z-10 opacity-20">
                     <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-indigo-500 rounded-full blur-[200px] -mr-96 -mt-96" />
@@ -279,15 +324,15 @@ function LandingPage() {
                             <Server size={12} /> System Specification
                         </div>
                         <h2 className="text-5xl font-black text-white mb-6 tracking-tight">How Corporate Intelligence is Built</h2>
-                        <p className="text-slate-400 max-w-2xl mx-auto text-lg">Our RAG (Retrieval-Augmented Generation) pipeline ensures that AI responses are factually grounded in your proprietary documentation.</p>
+                        <p className="text-slate-400 max-w-2xl mx-auto text-lg">Our RAG pipeline ensures that every AI response is factually grounded in your proprietary documentation.</p>
                     </div>
 
                     <div className="grid md:grid-cols-4 gap-4">
                         {[
-                            { step: '01', title: 'Data Ingress', desc: 'Documents (PDF, Word, TXT) are ingested via secure API. Metadata headers are preserved for RBAC compliance.', icon: ArrowDownCircle },
-                            { step: '02', title: 'Neural Partitioning', desc: 'Advanced recursive character splitting segments documents into semantic "chunks" to maximize context relevance.', icon: Layers },
-                            { step: '03', title: 'Vector Encoding', desc: 'Each chunk is processed through an embedding model (Gemini/Ada) and indexed into ours high-speed PostgreSQL vector store.', icon: Database },
-                            { step: '04', title: 'Semantic Matching', desc: 'Queries trigger a k-nearest neighbor (k-NN) search to retrieve the most semantically relevant knowledge fragments.', icon: Search },
+                            { step: '01', title: 'Data Ingress', desc: 'Documents are ingested via secure API. Metadata headers are preserved for RBAC compliance.', icon: ArrowDownCircle },
+                            { step: '02', title: 'Neural Partitioning', desc: 'Advanced recursive character splitting segments documents into semantic chunks to maximize context relevance.', icon: Layers },
+                            { step: '03', title: 'Vector Encoding', desc: 'Each chunk is processed through an embedding model and indexed into a high-speed vector store.', icon: Database },
+                            { step: '04', title: 'Semantic Matching', desc: 'Queries trigger a k-nearest neighbor search to retrieve the most semantically relevant knowledge fragments.', icon: Search },
                         ].map((item, i) => (
                             <div key={i} className="group p-8 bg-white/5 border border-white/5 rounded-[2rem] hover:bg-white/10 transition-all duration-300">
                                 <div className="text-4xl font-black text-indigo-500/20 mb-6 font-mono tracking-tighter">{item.step}</div>
@@ -320,13 +365,12 @@ function LandingPage() {
                 </div>
             </section>
 
-            {/* ── FEATURES section & more ── */}
             <section id="features" className="py-32">
                 <div className="max-w-7xl mx-auto px-6">
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-10 mb-20">
                         <div className="max-w-2xl">
                             <h2 className="text-5xl font-black text-slate-900 tracking-tight leading-none mb-6">Industrial Grade <br />Capabilities.</h2>
-                            <p className="text-slate-500 text-lg font-medium leading-relaxed">Enterprise RAG isnt just a chatbot. Its a robust infrastructure for high-scale document orchestration and authorized knowledge retrieval.</p>
+                            <p className="text-slate-500 text-lg font-medium leading-relaxed">Enterprise RAG is not just a chatbot. It is a robust infrastructure for high-scale document orchestration and authorized knowledge retrieval.</p>
                         </div>
                         <div className="flex gap-4">
                             <div className="px-6 py-3 bg-slate-50 border border-slate-100 rounded-2xl">
@@ -350,7 +394,34 @@ function LandingPage() {
                 </div>
             </section>
 
-            {/* ── CTA ── */}
+            <section id="faq" className="py-32 bg-slate-50">
+                <div className="max-w-4xl mx-auto px-6">
+                    <div className="text-center mb-16">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-600 text-[10px] font-bold uppercase tracking-widest rounded-full mb-6">
+                            <Sparkles size={10} /> Common Questions
+                        </div>
+                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-4">Frequently Asked Questions</h2>
+                        <p className="text-slate-500 text-lg font-medium max-w-xl mx-auto">Everything you need to know about deploying Enterprise RAG in your organization.</p>
+                    </div>
+
+                    <div className="space-y-3">
+                        {faqs.map((faq, i) => (
+                            <FAQItem key={i} q={faq.q} a={faq.a} />
+                        ))}
+                    </div>
+
+                    <div className="mt-16 text-center p-10 bg-white rounded-3xl border border-gray-100 shadow-sm">
+                        <p className="text-slate-500 font-medium mb-4">Still have questions? We are happy to help.</p>
+                        <button
+                            onClick={() => navigate('/login')}
+                            className="px-8 py-3 bg-indigo-600 text-white text-sm font-bold rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                        >
+                            Talk to the Platform →
+                        </button>
+                    </div>
+                </div>
+            </section>
+
             <section className="py-32 bg-slate-950 relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                 <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
@@ -364,18 +435,15 @@ function LandingPage() {
                     <p className="text-slate-400 text-lg mb-14 max-w-xl mx-auto font-medium">
                         Join hundreds of departments leveraging enterprise RAG for secure, accurate, and compliant AI intelligence retrieval.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-5 justify-center mt-12">
-                        <button
-                            onClick={() => navigate('/login')}
-                            className="px-12 py-5 bg-white text-slate-900 font-black rounded-2xl transition-all shadow-xl hover:bg-slate-50 hover:-translate-y-1 active:scale-95 flex items-center justify-center gap-3"
-                        >
-                            Get Started
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => navigate('/login')}
+                        className="px-12 py-5 bg-white text-slate-900 font-black rounded-2xl transition-all shadow-xl hover:bg-slate-50 hover:-translate-y-1 active:scale-95 inline-flex items-center gap-3"
+                    >
+                        Get Started <ArrowRight size={18} />
+                    </button>
                 </div>
             </section>
 
-            {/* ── FOOTER ── */}
             <footer className="bg-black py-16 px-6 border-t border-white/5">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-10">
                     <div className="flex flex-col items-center md:items-start gap-3">
@@ -394,6 +462,14 @@ function LandingPage() {
                                 <li>Google Gemini 1.5</li>
                                 <li>PostgreSQL Vector</li>
                                 <li>FastAPI Backend</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 className="text-[11px] font-black text-white uppercase tracking-[0.2em] mb-4">Navigate</h4>
+                            <ul className="text-[11px] text-slate-500 font-bold uppercase space-y-2">
+                                <li><button onClick={() => scrollTo('features')} className="hover:text-white transition-colors">Features</button></li>
+                                <li><button onClick={() => scrollTo('how-it-works')} className="hover:text-white transition-colors">Architecture</button></li>
+                                <li><button onClick={() => scrollTo('faq')} className="hover:text-white transition-colors">FAQ</button></li>
                             </ul>
                         </div>
                     </div>

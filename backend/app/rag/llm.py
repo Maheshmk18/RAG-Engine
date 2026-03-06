@@ -34,7 +34,7 @@ class LLMHandler:
         self.provider = "gemini"
         import google.generativeai as genai
         genai.configure(api_key=GOOGLE_API_KEY)
-        self.model = genai.GenerativeModel('gemini-1.5-flash')
+        self.model = genai.GenerativeModel('gemini-2.0-flash')
         print("Gemini LLM initialized")
 
     def _init_huggingface(self):

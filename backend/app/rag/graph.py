@@ -5,7 +5,6 @@ from langgraph.graph import StateGraph, END
 from .state import RAGState
 from .nodes import RAGNodes, NodeConfig, EmbeddingProvider, VectorStoreProvider, LLMProvider
 
-
 def build_graph(embeddings: EmbeddingProvider, vector_store: VectorStoreProvider, llm: LLMProvider, top_k: int = 5) -> Any:
     config = NodeConfig(top_k=top_k)
     nodes = RAGNodes(embeddings=embeddings, vector_store=vector_store, llm=llm, config=config)
@@ -59,7 +58,6 @@ def build_graph(embeddings: EmbeddingProvider, vector_store: VectorStoreProvider
     graph.add_edge("fallback_node", END)
     graph.add_edge("check_hallucination", END)
     return graph.compile()
-
 
 async def stream_graph_events(compiled_graph: Any, initial_state: RAGState) -> AsyncIterator[Dict[str, Any]]:
     async for event in compiled_graph.astream_events(initial_state, version="v1"):

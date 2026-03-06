@@ -10,9 +10,7 @@ from ..utils.auth import verify_password, get_password_hash, create_access_token
 from ..config import get_settings
 from ..utils.dependencies import get_current_user
 
-
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
 
 @router.post("/register", response_model=UserOut)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
@@ -34,11 +32,9 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
     db.refresh(user)
     return user
 
-
 class LoginResponse(UserOut):
     access_token: str
     token_type: str
-
 
 @router.post("/login", response_model=LoginResponse)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
@@ -65,7 +61,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         token_type="bearer",
     )
     return payload
-
 
 @router.get("/me", response_model=UserOut)
 def me(current_user: User = Depends(get_current_user)):

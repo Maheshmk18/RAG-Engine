@@ -4,10 +4,8 @@ from statistics import mean
 
 from .state import RAGState, RetrievedDocument, GradedDocument, SourceItem
 
-
 def normalize_text(value: str) -> str:
     return value.strip().lower()
-
 
 def detect_query_type(text: str) -> str:
     lowered = normalize_text(text)
@@ -24,22 +22,34 @@ def detect_query_type(text: str) -> str:
     for phrase in casual_phrases:
         if lowered == phrase or lowered.startswith(phrase + " "):
             return "casual"
-    if any(keyword in lowered for keyword in ["policy", "procedure", "guideline", "handbook", "leave", "benefit", "onboarding", "performance review", "expense", "reimbursement", "security", "compliance"]):
+    keywords = [
+        "policy", "procedure", "guideline", "handbook", "leave", "benefit", "onboarding", 
+        "performance review", "expense", "reimbursement", "security", "compliance",
+        "holiday", "contract", "salary", "payroll", "insurance", "pension", "remote",
+        "hybrid", "office", "code of conduct", "training", "development", "it",
+        "legal", "finance", "operations", "hr", "maternity", "paternity", "adopt",
+        "probation", "termination", "resignation", "recruitment", "hiring", "interview"
+    ]
+    starters = [
+        "what is", "how do i", "explain", "tell me", "where can i find", 
+        "show me", "list all", "summarize", "how does", "what are",
+        "who handles", "can i", "is it possible"
+    ]
+    if any(keyword in lowered for keyword in keywords):
+        return "document"
+    if any(lowered.startswith(starter) for starter in starters):
         return "document"
     return "out_of_scope"
-
 
 @dataclass
 class EmbeddingProvider:
     def embed_query(self, text: str) -> List[float]:
         raise NotImplementedError
 
-
 @dataclass
 class VectorStoreProvider:
     def query(self, embedding: List[float], top_k: int) -> List[RetrievedDocument]:
         raise NotImplementedError
-
 
 @dataclass
 class LLMProvider:
@@ -61,12 +71,10 @@ class LLMProvider:
         ratio = overlap / len(tokens)
         return ratio >= 0.25
 
-
 @dataclass
 class NodeConfig:
     top_k: int = 5
     minimal_relevance: float = 0.35
-
 
 @dataclass
 class RAGNodes:
@@ -88,7 +96,21 @@ class RAGNodes:
             return {**state, "retrieved_docs": [], "error": "Empty query"}
         try:
             embedding = self.embeddings.embed_query(query)
-            documents = self.vector_store.query(embedding=embedding, top_k=self.config.top_k)
+            raw = self.vector_store.query(query_embedding=embedding, n_results=self.config.top_k)
+            docs_list = raw.get("documents", [[]])[0] or []
+            metas_list = raw.get("metadatas", [[]])[0] or []
+            documents: List[RetrievedDocument] = []
+            for i, content in enumerate(docs_list):
+                meta = metas_list[i] if i < len(metas_list) else {}
+                score = float(meta.get("score", 0.0)) if isinstance(meta, dict) else 0.0
+                documents.append(
+                    RetrievedDocument(
+                        id=str(meta.get("document_id", i)) if isinstance(meta, dict) else str(i),
+                        content=content,
+                        score=score,
+                        metadata=meta if isinstance(meta, dict) else {},
+                    )
+                )
             return {**state, "retrieved_docs": documents}
         except Exception as exc:
             return {**state, "retrieved_docs": [], "error": str(exc)}
@@ -157,18 +179,23 @@ class RAGNodes:
             history_lines.append(f"{speaker}: {content}")
         history_section = "\n".join(history_lines) if history_lines else "No prior messages."
         prompt = (
-            f"You are an enterprise AI assistant for an internal knowledge base.\n"
-            f"User role: {role_label}.\n"
-            f"{role_instruction}\n\n"
-            f"Knowledge base context:\n"
-            f"{context_section}\n\n"
-            f"Conversation history:\n"
+            f"You are the {role_label} AI agent for an internal Enterprise Knowledge Base.\n"
+            f"STRATEGIC INSTRUCTION: {role_instruction}\n\n"
+            f"KNOWLEDGE CONTEXT (Retrieved from company documents):\n"
+            f"--------------------------------------------------\n"
+            f"{context_section}\n"
+            f"--------------------------------------------------\n\n"
+            f"CONVERSATION HISTORY:\n"
             f"{history_section}\n\n"
-            f"User question:\n"
+            f"CURRENT USER QUESTION:\n"
             f"{query}\n\n"
-            f"Respond in a structured, concise way using markdown. "
-            f"Reference only information that is present or strongly implied in the context section. "
-            f"If something is not present, state clearly that the information is not available."
+            f"RESPONSE GUIDELINES:\n"
+            f"- If the information is in the context, synthesize it into a clear answer.\n"
+            f"- If the answer is not in the context, politely state: 'I could not find a specific policy for this in our current internal knowledge base.'\n"
+            f"- Use a professional, helpful tone.\n"
+            f"- Use Markdown (bolding, lists, tables) for clarity.\n"
+            f"- Provide a 'Direct Answer' followed by 'Additional Context' if applicable.\n\n"
+            f"THINKING PATTERN (Analyze the query, check the context for matches, and then formulate the {role_label}-specific response):"
         )
         return prompt
 
