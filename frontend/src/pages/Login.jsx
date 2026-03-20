@@ -27,18 +27,21 @@ export function LoginPage() {
     setLoading(true);
 
     try {
-      const params = new URLSearchParams();
-      params.append('username', username.trim());
-      params.append('password', password);
+      const formData = new URLSearchParams();
+      formData.append('username', username.trim());
+      formData.append('password', password);
 
-      const response = await api.post('/auth/login', params, {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      const response = await api.post('/auth/login', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
       });
-
-      setAuth(response.data.access_token, response.data.user);
       
-      if (response.data.user.role === 'admin') {
-        navigate('/dashboard');
+      const { access_token, user } = response.data;
+      setAuth(access_token, user);
+      
+      if (user.role === 'admin') {
+        navigate('/admin-dashboard');
       } else {
         navigate('/chat');
       }

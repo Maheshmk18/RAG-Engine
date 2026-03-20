@@ -6,18 +6,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+# Load .env only if it exists (for local dev)
 env_path = Path(__file__).resolve().parent.parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path)
+else:
+    load_dotenv() # Fallback to standard environment
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if not DATABASE_URL:
-    print("\n" + "!"*50)
-    print(" CRITICAL ERROR: DATABASE_URL not found in environment!")
-    print(f" Checked path: {env_path}")
-    print(" Please check your .env file in the backend directory.")
-    print("!"*50 + "\n")
-    DATABASE_URL = "postgresql://dummy:dummy@localhost/dummy" 
+    # If still not found, try common alternative names or provide a dummy for build time
+    DATABASE_URL = os.environ.get("POSTGRES_URL") or "postgresql://dummy:dummy@localhost/dummy"
 
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -65,10 +65,28 @@ def init_db():
                 role="hr",
                 is_active=True
             )
+            manager_user = models.User(
+                username="manager",
+                email="manager@enterprise.com",
+                hashed_password=get_password_hash("12345"),
+                full_name="Department Manager",
+                role="manager",
+                is_active=True
+            )
+            employee_user = models.User(
+                username="employee",
+                email="employee@enterprise.com",
+                hashed_password=get_password_hash("123456"),
+                full_name="Associate Staff",
+                role="employee",
+                is_active=True
+            )
             db.add(admin_user)
             db.add(hr_user)
+            db.add(manager_user)
+            db.add(employee_user)
             db.commit()
-            print("Database seeded with admin/hr users.")
+            print("Database seeded with all initial test users.")
     except Exception as e:
         print(f"Error seeding database: {e}")
         db.rollback()
