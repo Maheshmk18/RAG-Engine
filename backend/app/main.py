@@ -1,78 +1,57 @@
-import os
-from pathlib import Path
-from dotenv import load_dotenv
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-env_path = Path(__file__).resolve().parent.parent / '.env'
-load_dotenv(dotenv_path=env_path)
+from app.api.router import api_router
+from app.core.config import Settings, get_settings
+from app.core.errors import register_exception_handlers
+from app.core.logging import configure_logging
+from app.core.middleware import RequestContextMiddleware
+from app.core.rate_limit import SlidingWindowRateLimiter
+from app.db.session import create_db_engine, create_session_factory
 
-from .database.connection import init_db, SessionLocal
-from .database.models import Document
-from .api import api_router
-from .core.config import settings
+logger = logging.getLogger(__name__)
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json"
-)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def create_app(settings: Settings | None = None) -> FastAPI:
+    settings = settings or get_settings()
+    configure_logging(settings.log_level, settings.log_json)
 
-app.include_router(api_router, prefix=settings.API_V1_STR)
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        logger.info("service starting", extra={"environment": settings.environment})
+        yield
+        app.state.engine.dispose()
+        logger.info("service stopped")
 
-@app.on_event("startup")
-async def startup_event():
-    print("Startup: Initializing Database...")
-    try:
-        init_db()
-        print("Startup: Database initialized successfully.")
-    except Exception as e:
-        print(f"Startup: Database initialization failed: {e}")
+    app = FastAPI(
+        title=settings.app_name,
+        version="1.0.0",
+        openapi_url=f"{settings.api_prefix}/openapi.json",
+        docs_url=f"{settings.api_prefix}/docs",
+        redoc_url=None,
+        lifespan=lifespan,
+    )
 
-    db = SessionLocal()
-    try:
-        stuck_docs = db.query(Document).filter(Document.status == "processing").all()
-        for doc in stuck_docs:
-            print(f"Startup cleanup: Marking '{doc.original_filename}' as failed (was stuck)")
-            doc.status = "failed"
-        
-        print(f"Startup check: Found {len(stuck_docs)} stuck documents.")
-        
-        db.commit()
-    except Exception as e:
-        print(f"Startup cleanup error: {e}")
-    finally:
-        db.close()
+    engine = create_db_engine(settings)
+    app.state.settings = settings
+    app.state.engine = engine
+    app.state.session_factory = create_session_factory(engine)
+    app.state.login_limiter = SlidingWindowRateLimiter(
+        settings.login_rate_limit, settings.login_rate_window_seconds
+    )
 
-    provider = os.environ.get("PRIMARY_AI_PROVIDER", "google")
-    vector_store = os.environ.get("VECTOR_STORE_PROVIDER", "postgres")
-    
-    print("\n" + "="*50)
-    print("ENTERPRISE RAG SYSTEM STARTING")
-    print("="*50)
-    print(f"Active AI Provider: {provider.upper()}")
-    print(f"Active Vector Store: {vector_store.upper()}")
-    print("="*50 + "\n")
-
-@app.get("/")
-def root():
-    return {
-        "name": settings.PROJECT_NAME,
-        "version": settings.VERSION,
-        "status": "running"
-    }
-
-@app.get("/health")
-def health_check():
-    return {
-        "status": "healthy",
-        "google_api_configured": bool(os.environ.get("GOOGLE_API_KEY"))
-    }
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.cors_origins,
+        allow_methods=["GET", "POST", "PATCH", "DELETE"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        expose_headers=["X-Request-ID"],
+    )
+    app.add_middleware(RequestContextMiddleware)
+    register_exception_handlers(app)
+    app.include_router(api_router, prefix=settings.api_prefix)
+    return app

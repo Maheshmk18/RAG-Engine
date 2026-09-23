@@ -1,26 +1,61 @@
-import os
-from pydantic_settings import BaseSettings
-from typing import Optional
+from functools import lru_cache
+from typing import Annotated, Literal
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+DEVELOPMENT_JWT_SECRET = "development-only-secret-never-use-in-production"
+
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Enterprise RAG Assistant"
-    VERSION: str = "1.0.0"
-    API_V1_STR: str = "/api/v1"
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    DATABASE_URL: str = os.environ.get("DATABASE_URL", "")
+    environment: Literal["development", "test", "production"] = "development"
+    app_name: str = "Ask My Docs"
+    api_prefix: str = "/api/v1"
+    log_level: str = "INFO"
+    log_json: bool = False
 
-    SECRET_KEY: str = os.environ.get("SESSION_SECRET", "your-secret-key-change-in-production")
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7
+    database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/ragengine"
+    database_pool_size: int = 5
+    database_max_overflow: int = 10
 
-    OPENAI_API_KEY: Optional[str] = os.environ.get("OPENAI_API_KEY")
+    jwt_secret: str = ""
+    jwt_algorithm: str = "HS256"
+    access_token_ttl_minutes: int = 720
 
-    CHROMA_PERSIST_DIRECTORY: str = "./chroma_db"
+    cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
+    login_rate_limit: int = 10
+    login_rate_window_seconds: int = 300
 
-    CHUNK_SIZE: int = 1000
-    CHUNK_OVERLAP: int = 200
+    @field_validator("database_url")
+    @classmethod
+    def use_psycopg_driver(cls, value: str) -> str:
+        for prefix in ("postgres://", "postgresql://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value.removeprefix(prefix)
+        return value
 
-    class Config:
-        case_sensitive = True
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def split_origins(cls, value: object) -> object:
+        if isinstance(value, str):
+            return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
+        return value
 
-settings = Settings()
+    @model_validator(mode="after")
+    def require_secret_in_production(self) -> "Settings":
+        if self.environment == "production" and len(self.jwt_secret) < 32:
+            raise ValueError("JWT_SECRET must be set to at least 32 characters in production")
+        if not self.jwt_secret:
+            self.jwt_secret = DEVELOPMENT_JWT_SECRET
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.environment == "production"
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    return Settings()

@@ -1,46 +1,77 @@
-from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from pydantic import BaseModel
+import uuid
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
-from .config import settings
+import bcrypt
+import jwt
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.config import Settings
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+MIN_PASSWORD_LENGTH = 12
+MAX_PASSWORD_BYTES = 72
 
-class TokenData(BaseModel):
-    username: Optional[str] = None
-    user_id: Optional[int] = None
-    role: str = "employee"
+_DUMMY_HASH = bcrypt.hashpw(b"timing-equaliser", bcrypt.gensalt()).decode()
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
 
-def get_password_hash(password: str) -> str:
-    return pwd_context.hash(password)
+@dataclass(frozen=True)
+class AccessToken:
+    token: str
+    expires_in: int
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
-    return encoded_jwt
 
-def decode_token(token: str) -> Optional[TokenData]:
+@dataclass(frozen=True)
+class TokenClaims:
+    user_id: uuid.UUID
+    role: str
+
+
+def validate_password_strength(password: str) -> str:
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Password must be at least {MIN_PASSWORD_LENGTH} characters")
+    if len(password.encode()) > MAX_PASSWORD_BYTES:
+        raise ValueError(f"Password must be at most {MAX_PASSWORD_BYTES} bytes")
+    if password.isalpha() or password.isdigit():
+        raise ValueError("Password must mix letters with numbers or symbols")
+    return password
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, password_hash: str | None) -> bool:
+    candidate = password_hash or _DUMMY_HASH
     try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
-        user_id: int = payload.get("user_id")
-        role: str = payload.get("role", "employee")
-        if username is None:
+        matches = bcrypt.checkpw(password.encode(), candidate.encode())
+    except ValueError:
+        return False
+    return matches and password_hash is not None
+
+
+def create_access_token(user_id: uuid.UUID, role: str, settings: Settings) -> AccessToken:
+    now = datetime.now(UTC)
+    ttl = timedelta(minutes=settings.access_token_ttl_minutes)
+    claims = {
+        "sub": str(user_id),
+        "role": role,
+        "iat": now,
+        "exp": now + ttl,
+        "typ": "access",
+    }
+    token = jwt.encode(claims, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    return AccessToken(token=token, expires_in=int(ttl.total_seconds()))
+
+
+def decode_access_token(token: str, settings: Settings) -> TokenClaims | None:
+    try:
+        claims = jwt.decode(
+            token,
+            settings.jwt_secret,
+            algorithms=[settings.jwt_algorithm],
+            options={"require": ["sub", "exp", "iat"]},
+        )
+        if claims.get("typ") != "access":
             return None
-        return TokenData(username=username, user_id=user_id, role=role)
-    except JWTError:
+        return TokenClaims(user_id=uuid.UUID(claims["sub"]), role=str(claims.get("role", "")))
+    except (jwt.PyJWTError, ValueError):
         return None
