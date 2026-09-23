@@ -38,6 +38,7 @@ def settings(database_url: str) -> Settings:
         jwt_secret="test-secret-that-is-long-enough-for-hs256",
         log_level="WARNING",
         login_rate_limit=3,
+        warm_models_on_startup=False,
     )
 
 

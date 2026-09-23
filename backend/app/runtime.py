@@ -1,3 +1,6 @@
+import logging
+import time
+
 from app.core.config import Settings
 from app.db.models import EMBEDDING_DIMENSIONS
 from app.db.session import SessionFactory
@@ -9,6 +12,8 @@ from app.retrieval.embeddings import Embedder, FastEmbedEmbedder
 from app.retrieval.rerank import CrossEncoderReranker, Reranker
 from app.retrieval.retriever import HybridRetriever, RetrievalConfig
 from app.retrieval.store import ChunkStore
+
+logger = logging.getLogger(__name__)
 
 
 def build_embedder(settings: Settings) -> FastEmbedEmbedder:
@@ -79,3 +84,16 @@ def build_answer_service(
     settings: Settings, retriever: HybridRetriever, llm: LLMClient
 ) -> AnswerService:
     return AnswerService(retriever, llm, answer_config(settings))
+
+
+def warm_up(retriever: HybridRetriever) -> None:
+    started = time.perf_counter()
+    try:
+        retriever.embedder.embed_query("warm up")
+        retriever.reranker.score("warm up", ["warm up"])
+    except Exception:
+        logger.exception("model warm-up failed")
+        return
+    logger.info(
+        "models ready", extra={"duration_ms": round((time.perf_counter() - started) * 1000, 1)}
+    )

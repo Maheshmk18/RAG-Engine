@@ -22,6 +22,7 @@ from app.runtime import (
     build_reranker,
     build_retriever,
     build_worker,
+    warm_up,
 )
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         logger.info("service starting", extra={"environment": settings.environment})
         stop = threading.Event()
         worker_thread: threading.Thread | None = None
+        if settings.warm_models_on_startup:
+            threading.Thread(target=warm_up, args=(app.state.retriever,), daemon=True).start()
         if settings.embedded_worker:
             worker = build_worker(settings, app.state.session_factory, app.state.pipeline)
             worker_thread = threading.Thread(target=worker.run, args=(stop,), daemon=True)

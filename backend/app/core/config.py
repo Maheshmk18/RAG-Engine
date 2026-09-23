@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     worker_max_attempts: int = 3
     worker_stale_after_seconds: int = 600
 
+    warm_models_on_startup: bool = True
     reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
     retrieval_dense_candidates: int = 30
     retrieval_lexical_candidates: int = 30
