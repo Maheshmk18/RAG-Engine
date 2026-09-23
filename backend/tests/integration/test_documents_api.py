@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from pymongo.database import Database
 
 from app.core.config import Settings
+from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.mongo import CHUNKS, DOCUMENTS
 from app.ingestion.pipeline import IngestionPipeline
 from app.ingestion.worker import IngestionWorker
@@ -56,9 +57,24 @@ def test_upload_is_queued_then_indexed_by_worker(
     assert current_corpus_version(db) == 1
 
 
-def test_uploads_require_the_admin_key(client: TestClient) -> None:
+def test_changing_documents_requires_the_admin_key(
+    client: TestClient, admin: dict[str, str]
+) -> None:
     assert upload(client, {}, "travel.md", POLICY)["http_status"] == 403
     assert upload(client, {"X-Admin-Key": "y" * 24}, "travel.md", POLICY)["http_status"] == 403
+
+    created = upload(client, admin, "travel.md", POLICY)
+    path = f"/api/v1/documents/{created['id']}"
+    assert client.delete(path).status_code == 403
+    assert client.post(f"{path}/reprocess").status_code == 403
+    assert client.delete(path, headers=admin).status_code == 204
+
+
+def test_uploads_are_rate_limited(app: FastAPI, client: TestClient, admin: dict[str, str]) -> None:
+    app.state.upload_limiter = SlidingWindowRateLimiter(limit=1, window_seconds=3600)
+    assert upload(client, admin, "travel.md", POLICY)["http_status"] == 202
+    limited = upload(client, admin, "other.md", b"# Other\n\nSome text.")
+    assert limited["http_status"] == 429
 
 
 def test_anyone_can_read_documents(client: TestClient, admin: dict[str, str]) -> None:

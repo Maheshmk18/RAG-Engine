@@ -76,6 +76,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings, app.state.retriever, build_llm(settings)
     )
     app.state.chat_limiter = SlidingWindowRateLimiter(settings.chat_rate_limit_per_minute, 60)
+    app.state.upload_limiter = SlidingWindowRateLimiter(settings.upload_rate_limit_per_hour, 3600)
 
     app.add_middleware(
         CORSMiddleware,

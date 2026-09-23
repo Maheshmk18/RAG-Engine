@@ -1,8 +1,10 @@
 from urllib.parse import quote
 
-from fastapi import APIRouter, File, Response, UploadFile, status
+from fastapi import APIRouter, File, Request, Response, UploadFile, status
 
-from app.api.deps import AdminAccess, DatabaseDep, SettingsDep
+from app.api.deps import AdminAccess, DatabaseDep, SettingsDep, client_address
+from app.core.errors import RateLimitedError
+from app.core.rate_limit import SlidingWindowRateLimiter
 from app.schemas.documents import DocumentRead
 from app.services import documents as document_service
 
@@ -16,8 +18,15 @@ def list_documents(db: DatabaseDep) -> list[DocumentRead]:
 
 @router.post("", response_model=DocumentRead, status_code=status.HTTP_202_ACCEPTED)
 def upload_document(
-    _: AdminAccess, db: DatabaseDep, settings: SettingsDep, file: UploadFile = File(...)
+    _: AdminAccess,
+    request: Request,
+    db: DatabaseDep,
+    settings: SettingsDep,
+    file: UploadFile = File(...),
 ) -> DocumentRead:
+    limiter: SlidingWindowRateLimiter = request.app.state.upload_limiter
+    if not limiter.allow(client_address(request)):
+        raise RateLimitedError("Too many uploads from this address. Try again in an hour.")
     data = file.file.read(settings.max_upload_bytes + 1)
     document = document_service.create_document(db, file.filename or "document", data, settings)
     return DocumentRead.model_validate(document)

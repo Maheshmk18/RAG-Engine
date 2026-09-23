@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     admin_api_key: SecretStr | None = None
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     chat_rate_limit_per_minute: int = 20
+    upload_rate_limit_per_hour: int = 30
 
     max_upload_mb: int = 20
     embedding_model: str = "BAAI/bge-small-en-v1.5"

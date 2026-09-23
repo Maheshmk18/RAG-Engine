@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Lock, Microscope, PanelLeft, Plus, ShieldCheck } from "lucide-react";
+import { FileText, Lock, Microscope, PanelLeft, Plus, ShieldCheck, Upload } from "lucide-react";
 import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -8,6 +8,7 @@ import { Wordmark } from "@/components/Wordmark";
 import { AnswerStreamProvider } from "@/features/chat/AnswerStreamProvider";
 import { ConversationList } from "@/features/chat/ConversationList";
 import { AdminKeyDialog } from "@/features/documents/AdminKeyDialog";
+import { UploadDialog } from "@/features/documents/UploadDialog";
 import { useAdminAccess } from "@/lib/admin";
 import { api } from "@/lib/api";
 import styles from "./AppShell.module.css";
@@ -31,7 +32,7 @@ function AdminStatus() {
     <>
       <button type="button" className={styles.adminButton} onClick={() => setOpen(true)}>
         <Lock size={14} />
-        Manage documents
+        Admin access
       </button>
       <AdminKeyDialog open={open} onClose={() => setOpen(false)} />
     </>
@@ -42,6 +43,7 @@ export function AppShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const [navOpen, setNavOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const sessions = useQuery({ queryKey: ["sessions"], queryFn: api.sessions });
 
   const [lastPath, setLastPath] = useState(location.pathname);
@@ -66,6 +68,14 @@ export function AppShell() {
             className={styles.fill}
           >
             New conversation
+          </Button>
+          <Button
+            variant="ghost"
+            icon={<Upload size={15} />}
+            onClick={() => setUploading(true)}
+            className={styles.fill}
+          >
+            Upload documents
           </Button>
         </div>
         <ConversationList sessions={sessions.data ?? []} loading={sessions.isPending} />
@@ -108,6 +118,7 @@ export function AppShell() {
           </Suspense>
         </AnswerStreamProvider>
       </div>
+      <UploadDialog open={uploading} onClose={() => setUploading(false)} />
     </div>
   );
 }
