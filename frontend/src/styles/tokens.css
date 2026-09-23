@@ -31,77 +31,25 @@
   --ease: cubic-bezier(0.2, 0, 0, 1);
 
   color-scheme: light;
-  --bg: #f7f6f3;
+  --bg: #ffffff;
   --surface: #ffffff;
-  --surface-sunken: #f0efeb;
-  --surface-hover: #ecebe6;
-  --border: #e4e2dc;
-  --border-strong: #cfccc3;
-  --text: #1d1c1a;
-  --text-muted: #6b6861;
-  --text-faint: #99958c;
+  --surface-sunken: #f7f7f6;
+  --surface-hover: #f1f1ef;
+  --border: #e8e8e5;
+  --border-strong: #d4d4cf;
+  --text: #1b1b19;
+  --text-muted: #62625d;
+  --text-faint: #96968f;
   --accent: #2f5d50;
   --accent-hover: #264d42;
-  --accent-soft: #e5eeea;
+  --accent-soft: #e9f1ee;
   --accent-text: #24493f;
-  --on-accent: #f7f6f3;
+  --on-accent: #ffffff;
   --danger: #a3362a;
-  --danger-soft: #f6e6e2;
+  --danger-soft: #fbeceb;
   --warning: #85600a;
-  --warning-soft: #f6eed8;
+  --warning-soft: #fbf3df;
   --success: #2e6a3e;
-  --success-soft: #e3efe5;
-  --shadow-popover: 0 1px 2px rgb(29 28 26 / 6%), 0 8px 24px rgb(29 28 26 / 10%);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --bg: #161614;
-    --surface: #1e1e1c;
-    --surface-sunken: #242421;
-    --surface-hover: #2a2a27;
-    --border: #2f2e2b;
-    --border-strong: #3e3d39;
-    --text: #ebeae5;
-    --text-muted: #a4a198;
-    --text-faint: #75726a;
-    --accent: #86bba8;
-    --accent-hover: #9bc9b8;
-    --accent-soft: #223029;
-    --accent-text: #a3cfbf;
-    --on-accent: #10201a;
-    --danger: #e08674;
-    --danger-soft: #3a2420;
-    --warning: #d7b563;
-    --warning-soft: #352c17;
-    --success: #8cc398;
-    --success-soft: #1f3124;
-    --shadow-popover: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 40%);
-  }
-}
-
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --bg: #161614;
-  --surface: #1e1e1c;
-  --surface-sunken: #242421;
-  --surface-hover: #2a2a27;
-  --border: #2f2e2b;
-  --border-strong: #3e3d39;
-  --text: #ebeae5;
-  --text-muted: #a4a198;
-  --text-faint: #75726a;
-  --accent: #86bba8;
-  --accent-hover: #9bc9b8;
-  --accent-soft: #223029;
-  --accent-text: #a3cfbf;
-  --on-accent: #10201a;
-  --danger: #e08674;
-  --danger-soft: #3a2420;
-  --warning: #d7b563;
-  --warning-soft: #352c17;
-  --success: #8cc398;
-  --success-soft: #1f3124;
-  --shadow-popover: 0 1px 2px rgb(0 0 0 / 30%), 0 8px 24px rgb(0 0 0 / 40%);
+  --success-soft: #e8f3eb;
+  --shadow-popover: 0 1px 2px rgb(27 27 25 / 6%), 0 8px 24px rgb(27 27 25 / 10%);
 }

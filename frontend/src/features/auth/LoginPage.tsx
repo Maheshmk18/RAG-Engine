@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router";
-import { Wordmark } from "@/app/AppShell";
+import { Wordmark } from "@/components/Wordmark";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Field";
 import { ApiError } from "@/lib/api";
@@ -37,7 +37,7 @@ export function LoginPage() {
   return (
     <main className={styles.page}>
       <div className={styles.brand}>
-        <Wordmark />
+        <Wordmark to="/" />
       </div>
       <form className={styles.form} onSubmit={submit} noValidate>
         <div className={styles.heading}>

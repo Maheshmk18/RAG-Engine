@@ -1,65 +1,22 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  FileText,
-  LogOut,
-  Microscope,
-  Monitor,
-  Moon,
-  PanelLeft,
-  Plus,
-  Settings,
-  Sun,
-  Users,
-} from "lucide-react";
+import { FileText, LogOut, Microscope, PanelLeft, Plus, Settings, Users } from "lucide-react";
 import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Menu, MenuItem, MenuSection } from "@/components/ui/Menu";
 import { Spinner } from "@/components/ui/Spinner";
+import { Wordmark } from "@/components/Wordmark";
 import { AccountDialog } from "@/features/account/AccountDialog";
 import { AnswerStreamProvider } from "@/features/chat/AnswerStreamProvider";
 import { ConversationList } from "@/features/chat/ConversationList";
 import { api } from "@/lib/api";
 import { useAuth, useCurrentUser } from "@/lib/authContext";
 import { initials } from "@/lib/format";
-import { useTheme } from "@/lib/theme";
-import type { Theme } from "@/lib/theme";
 import styles from "./AppShell.module.css";
-
-const THEMES: { value: Theme; label: string; icon: typeof Sun }[] = [
-  { value: "system", label: "System", icon: Monitor },
-  { value: "light", label: "Light", icon: Sun },
-  { value: "dark", label: "Dark", icon: Moon },
-];
-
-export function Wordmark() {
-  return (
-    <span className={styles.wordmark}>
-      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true">
-        <rect width="32" height="32" rx="7" fill="var(--accent)" />
-        <path
-          d="M10 8.5h8.5L23 13v10.5H10z"
-          fill="none"
-          stroke="var(--on-accent)"
-          strokeWidth="2"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M13.5 17h6M13.5 20.5h4"
-          stroke="var(--on-accent)"
-          strokeWidth="2"
-          strokeLinecap="round"
-        />
-      </svg>
-      Ask My Docs
-    </span>
-  );
-}
 
 function AccountMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
   const user = useCurrentUser();
   const { signOut } = useAuth();
-  const [theme, setTheme] = useTheme();
 
   return (
     <Menu
@@ -88,23 +45,6 @@ function AccountMenu({ onOpenSettings }: { onOpenSettings: () => void }) {
             >
               Account settings
             </MenuItem>
-          </MenuSection>
-          <MenuSection label="Appearance">
-            <div className={styles.themes} role="radiogroup" aria-label="Theme">
-              {THEMES.map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={theme === value}
-                  className={styles.theme}
-                  onClick={() => setTheme(value)}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              ))}
-            </div>
           </MenuSection>
           <MenuSection>
             <MenuItem icon={<LogOut size={15} />} onSelect={signOut}>
@@ -138,7 +78,7 @@ export function AppShell() {
     <div className={styles.shell} data-nav-open={navOpen}>
       <aside className={styles.sidebar}>
         <div className={styles.brand}>
-          <Wordmark />
+          <Wordmark to="/chat" />
         </div>
         <div className={styles.newChat}>
           <Button

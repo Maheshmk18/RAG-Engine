@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { LoginPage } from "@/features/auth/LoginPage";
+import { LandingPage } from "@/features/landing/LandingPage";
 import { ApiError } from "@/lib/api";
 import { AuthProvider } from "@/lib/auth";
 import { AppShell } from "./AppShell";
@@ -40,6 +41,7 @@ export function App() {
       <AuthProvider>
         <BrowserRouter>
           <Routes>
+            <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
@@ -51,7 +53,7 @@ export function App() {
                 </Route>
               </Route>
             </Route>
-            <Route path="*" element={<Navigate to="/chat" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
