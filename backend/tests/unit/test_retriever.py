@@ -17,9 +17,9 @@ PASSAGES = [
 
 @pytest.fixture
 def retriever() -> HybridRetriever:
-    document_id = uuid.uuid4()
+    document_id = str(uuid.uuid4())
     records = [
-        ChunkRecord(uuid.uuid4(), document_id, title, heading, None, text)
+        ChunkRecord(str(uuid.uuid4()), document_id, title, heading, None, text)
         for title, heading, text in PASSAGES
     ]
     embedder = HashingEmbedder()

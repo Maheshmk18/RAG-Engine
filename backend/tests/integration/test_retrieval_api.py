@@ -1,19 +1,16 @@
-from collections.abc import Callable
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
 from app.core.config import Settings
-from app.db.models import User
 from app.ingestion.pipeline import IngestionPipeline
 from app.retrieval.retriever import HybridRetriever, RetrievalConfig
-from app.retrieval.store import PostgresChunkStore
+from app.retrieval.store import MongoChunkStore
 from app.services import documents as document_service
 from tests.fakes import HashingEmbedder, OverlapReranker
-
-Headers = Callable[[User], dict[str, str]]
 
 HANDBOOK = b"""# Handbook
 
@@ -27,60 +24,50 @@ Connect through the company VPN before using internal systems.
 """
 
 
+def index(db: Database, settings: Settings, name: str, data: bytes) -> None:
+    document = document_service.create_document(db, name, data, settings)
+    IngestionPipeline(HashingEmbedder(), max_words=100, overlap_words=10).process(db, document.id)
+
+
 @pytest.fixture
-def indexed(app: FastAPI, db: Session, admin: User, settings: Settings) -> PostgresChunkStore:
-    embedder = HashingEmbedder()
-    document = document_service.create_document(db, "handbook.md", HANDBOOK, admin, settings)
-    IngestionPipeline(embedder, max_words=100, overlap_words=10).process(db, document.id)
-    store = PostgresChunkStore(app.state.session_factory)
+def store(app: FastAPI, db: Database, settings: Settings) -> MongoChunkStore:
+    index(db, settings, "handbook.md", HANDBOOK)
+    store = MongoChunkStore(app.state.database)
     app.state.retriever = HybridRetriever(
-        store, embedder, OverlapReranker(), RetrievalConfig(min_relevance=0.3)
+        store, HashingEmbedder(), OverlapReranker(), RetrievalConfig(min_relevance=0.3)
     )
     return store
 
 
-def test_search_returns_scored_passages(
-    client: TestClient, admin: User, auth_headers: Headers, indexed: PostgresChunkStore
-) -> None:
-    response = client.post(
-        "/api/v1/retrieval/search", json={"query": "VPN internal"}, headers=auth_headers(admin)
-    )
+def search(client: TestClient, query: str) -> dict[str, Any]:
+    response = client.post("/api/v1/retrieval/search", json={"query": query})
     assert response.status_code == 200
-    body = response.json()
+    body: dict[str, Any] = response.json()
+    return body
+
+
+def test_search_returns_scored_passages(client: TestClient, store: MongoChunkStore) -> None:
+    body = search(client, "VPN internal")
     top = body["passages"][0]
     assert top["heading"] == "Remote Access"
     assert top["document_title"] == "Handbook"
     assert top["lexical_rank"] == 1
+    assert top["dense_rank"] is not None
     assert body["trace"]["spans"][0]["name"] == "retrieval.dense"
 
 
-def test_lexical_index_follows_corpus_changes(
-    client: TestClient,
-    admin: User,
-    auth_headers: Headers,
-    indexed: PostgresChunkStore,
-    db: Session,
-    settings: Settings,
+def test_indexes_follow_corpus_changes(
+    client: TestClient, store: MongoChunkStore, db: Database, settings: Settings
 ) -> None:
-    headers = auth_headers(admin)
-    query = {"query": "sabbatical eligibility"}
-    assert (
-        client.post("/api/v1/retrieval/search", json=query, headers=headers).json()["passages"]
-        == []
-    )
-
+    assert search(client, "sabbatical eligibility")["passages"] == []
     extra = b"# Sabbatical\n\n## Eligibility\n\nSabbatical eligibility starts after seven years."
-    document = document_service.create_document(db, "sabbatical.md", extra, admin, settings)
-    IngestionPipeline(HashingEmbedder(), 100, 10).process(db, document.id)
-
-    passages = client.post("/api/v1/retrieval/search", json=query, headers=headers).json()[
-        "passages"
-    ]
+    index(db, settings, "sabbatical.md", extra)
+    passages = search(client, "sabbatical eligibility")["passages"]
     assert passages[0]["document_title"] == "Sabbatical"
 
 
-def test_search_is_admin_only(client: TestClient, member: User, auth_headers: Headers) -> None:
-    response = client.post(
-        "/api/v1/retrieval/search", json={"query": "vpn"}, headers=auth_headers(member)
-    )
-    assert response.status_code == 403
+def test_local_vector_search_ranks_by_similarity(store: MongoChunkStore) -> None:
+    ids = store.vector_search(HashingEmbedder().embed_query("hotels night London"), limit=2)
+    records = store.get_many(ids)
+    assert records[ids[0]].heading == "Hotels"
+    assert len(store.all_chunks()) == 2

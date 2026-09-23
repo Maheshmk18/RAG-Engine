@@ -1,12 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.core.config import DEVELOPMENT_JWT_SECRET, Settings
-
-
-def test_database_url_uses_psycopg_driver() -> None:
-    settings = Settings(database_url="postgres://user:pass@host:5432/db")
-    assert settings.database_url == "postgresql+psycopg://user:pass@host:5432/db"
+from app.core.config import Settings
 
 
 def test_cors_origins_accept_comma_separated_values() -> None:
@@ -14,10 +9,17 @@ def test_cors_origins_accept_comma_separated_values() -> None:
     assert settings.cors_origins == ["https://a.example.com", "https://b.example.com"]
 
 
-def test_production_requires_strong_secret() -> None:
-    with pytest.raises(ValidationError, match="JWT_SECRET"):
-        Settings(environment="production", jwt_secret="too-short")
+def test_short_admin_key_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="ADMIN_API_KEY"):
+        Settings(admin_api_key="short")
 
 
-def test_development_falls_back_to_local_secret() -> None:
-    assert Settings(environment="development", jwt_secret="").jwt_secret == DEVELOPMENT_JWT_SECRET
+def test_blank_keys_count_as_unset() -> None:
+    settings = Settings(admin_api_key="  ", groq_api_key="")
+    assert settings.admin_api_key is None
+    assert settings.groq_api_key is None
+
+
+def test_vector_search_mode_is_validated() -> None:
+    with pytest.raises(ValidationError):
+        Settings(vector_search="elastic")

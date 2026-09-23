@@ -1,4 +1,3 @@
-import uuid
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -11,8 +10,8 @@ class SearchRequest(BaseModel):
 
 
 class PassageRead(BaseModel):
-    chunk_id: uuid.UUID
-    document_id: uuid.UUID
+    chunk_id: str
+    document_id: str
     document_title: str
     heading: str | None
     page: int | None

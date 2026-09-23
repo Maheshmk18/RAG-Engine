@@ -1,12 +1,12 @@
 import logging
 import threading
-import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
-from sqlalchemy import or_, select, update
+from pymongo import ReturnDocument
+from pymongo.database import Database
 
-from app.db.models import Document, DocumentStatus
-from app.db.session import SessionFactory
+from app.db.mongo import DOCUMENTS, utcnow
+from app.db.records import DocumentStatus
 from app.ingestion.extract import ExtractionError
 from app.ingestion.pipeline import IngestionPipeline
 
@@ -16,77 +16,67 @@ logger = logging.getLogger(__name__)
 class IngestionWorker:
     def __init__(
         self,
-        session_factory: SessionFactory,
+        db: Database,
         pipeline: IngestionPipeline,
         max_attempts: int,
         stale_after_seconds: int,
         poll_seconds: float,
     ) -> None:
-        self.session_factory = session_factory
+        self.db = db
         self.pipeline = pipeline
         self.max_attempts = max_attempts
         self.stale_after = timedelta(seconds=stale_after_seconds)
         self.poll_seconds = poll_seconds
 
-    def claim_next(self) -> uuid.UUID | None:
-        stale_before = datetime.now(UTC) - self.stale_after
-        candidate = (
-            select(Document.id)
-            .where(
-                or_(
-                    Document.status == DocumentStatus.PENDING,
-                    (Document.status == DocumentStatus.PROCESSING)
-                    & (Document.updated_at < stale_before),
-                )
-            )
-            .order_by(Document.created_at)
-            .limit(1)
-            .with_for_update(skip_locked=True)
-            .scalar_subquery()
+    def claim_next(self) -> str | None:
+        now = utcnow()
+        raw = self.db[DOCUMENTS].find_one_and_update(
+            {
+                "$or": [
+                    {"status": DocumentStatus.PENDING.value},
+                    {
+                        "status": DocumentStatus.PROCESSING.value,
+                        "updated_at": {"$lt": now - self.stale_after},
+                    },
+                ]
+            },
+            {
+                "$set": {"status": DocumentStatus.PROCESSING.value, "updated_at": now},
+                "$inc": {"attempts": 1},
+            },
+            sort=[("created_at", 1)],
+            projection={"_id": 1},
+            return_document=ReturnDocument.AFTER,
         )
-        claim = (
-            update(Document)
-            .where(Document.id == candidate)
-            .values(
-                status=DocumentStatus.PROCESSING,
-                attempts=Document.attempts + 1,
-                updated_at=datetime.now(UTC),
-            )
-            .returning(Document.id)
-        )
-        with self.session_factory() as db:
-            document_id = db.scalar(claim)
-            db.commit()
-            return document_id
+        return raw["_id"] if raw else None
 
-    def process(self, document_id: uuid.UUID) -> None:
+    def process(self, document_id: str) -> None:
         try:
-            with self.session_factory() as db:
-                self.pipeline.process(db, document_id)
+            self.pipeline.process(self.db, document_id)
         except Exception as exc:
             self.record_failure(document_id, exc)
 
-    def record_failure(self, document_id: uuid.UUID, exc: Exception) -> None:
+    def record_failure(self, document_id: str, exc: Exception) -> None:
         permanent = isinstance(exc, ExtractionError)
         logger.error(
             "document ingestion failed",
             exc_info=None if permanent else exc,
-            extra={"document_id": str(document_id), "reason": str(exc)},
+            extra={"document_id": document_id, "reason": str(exc)},
         )
-        with self.session_factory() as db:
-            document = db.get(Document, document_id)
-            if document is None:
-                return
-            if permanent:
-                document.status = DocumentStatus.FAILED
-                document.error_message = str(exc)
-            elif document.attempts >= self.max_attempts:
-                document.status = DocumentStatus.FAILED
-                document.error_message = f"Processing failed after {document.attempts} attempts"
-            else:
-                document.status = DocumentStatus.PENDING
-                document.error_message = "Processing failed and will be retried"
-            db.commit()
+        raw = self.db[DOCUMENTS].find_one({"_id": document_id}, {"attempts": 1})
+        if raw is None:
+            return
+        attempts = raw.get("attempts", 0)
+        if permanent:
+            status, message = DocumentStatus.FAILED, str(exc)
+        elif attempts >= self.max_attempts:
+            status, message = DocumentStatus.FAILED, f"Processing failed after {attempts} attempts"
+        else:
+            status, message = DocumentStatus.PENDING, "Processing failed and will be retried"
+        self.db[DOCUMENTS].update_one(
+            {"_id": document_id},
+            {"$set": {"status": status.value, "error_message": message, "updated_at": utcnow()}},
+        )
 
     def run_once(self) -> bool:
         document_id = self.claim_next()

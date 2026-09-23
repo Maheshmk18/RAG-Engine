@@ -1,5 +1,4 @@
 import logging
-import uuid
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -44,8 +43,8 @@ class AnswerConfig:
 @dataclass(frozen=True)
 class Citation:
     number: int
-    chunk_id: uuid.UUID
-    document_id: uuid.UUID
+    chunk_id: str
+    document_id: str
     document_title: str
     heading: str | None
     page: int | None

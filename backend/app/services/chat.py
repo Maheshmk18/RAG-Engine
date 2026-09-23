@@ -1,13 +1,13 @@
 import uuid
 from dataclasses import asdict
-from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from pymongo import ASCENDING, DESCENDING
+from pymongo.database import Database
 
 from app.core.errors import NotFoundError
-from app.db.models import ChatSession, Message, MessageRole, MessageStatus, User
+from app.db.mongo import MESSAGES, SESSIONS, utcnow
+from app.db.records import MessageRecord, MessageRole, MessageStatus, SessionRecord
 from app.generation.answerer import Answer
 from app.generation.llm import ChatMessage
 
@@ -22,44 +22,50 @@ def title_from_question(question: str) -> str:
     return text[:TITLE_LENGTH].rsplit(" ", 1)[0] + "..."
 
 
-def list_sessions(db: Session, user: User, limit: int = 100) -> list[ChatSession]:
-    query = (
-        select(ChatSession)
-        .where(ChatSession.user_id == user.id)
-        .order_by(ChatSession.updated_at.desc())
-        .limit(limit)
-    )
-    return list(db.scalars(query))
+def list_sessions(db: Database, client_id: str, limit: int = 100) -> list[SessionRecord]:
+    cursor = db[SESSIONS].find({"client_id": client_id}).sort("updated_at", DESCENDING).limit(limit)
+    return [SessionRecord.from_mongo(raw) for raw in cursor]
 
 
-def create_session(db: Session, user: User, title: str | None = None) -> ChatSession:
-    session = ChatSession(user_id=user.id, title=title or DEFAULT_TITLE)
-    db.add(session)
-    db.commit()
-    return session
+def create_session(db: Database, client_id: str, title: str | None = None) -> SessionRecord:
+    now = utcnow()
+    raw = {
+        "_id": str(uuid.uuid4()),
+        "client_id": client_id,
+        "title": title or DEFAULT_TITLE,
+        "created_at": now,
+        "updated_at": now,
+    }
+    db[SESSIONS].insert_one(raw)
+    return SessionRecord.from_mongo(raw)
 
 
-def get_session(db: Session, user: User, session_id: uuid.UUID) -> ChatSession:
-    session = db.get(ChatSession, session_id)
-    if session is None or session.user_id != user.id:
+def get_session(db: Database, client_id: str, session_id: str) -> SessionRecord:
+    raw = db[SESSIONS].find_one({"_id": session_id, "client_id": client_id})
+    if raw is None:
         raise NotFoundError("Conversation not found")
-    return session
+    return SessionRecord.from_mongo(raw)
 
 
-def rename_session(db: Session, user: User, session_id: uuid.UUID, title: str) -> ChatSession:
-    session = get_session(db, user, session_id)
-    session.title = title
-    db.commit()
-    return session
+def list_messages(db: Database, session_id: str) -> list[MessageRecord]:
+    cursor = db[MESSAGES].find({"session_id": session_id}).sort("created_at", ASCENDING)
+    return [MessageRecord.from_mongo(raw) for raw in cursor]
 
 
-def delete_session(db: Session, user: User, session_id: uuid.UUID) -> None:
-    db.delete(get_session(db, user, session_id))
-    db.commit()
+def rename_session(db: Database, client_id: str, session_id: str, title: str) -> SessionRecord:
+    get_session(db, client_id, session_id)
+    db[SESSIONS].update_one({"_id": session_id}, {"$set": {"title": title}})
+    return get_session(db, client_id, session_id)
 
 
-def recent_history(session: ChatSession, limit: int) -> list[ChatMessage]:
-    usable = [message for message in session.messages if message.status != MessageStatus.FAILED]
+def delete_session(db: Database, client_id: str, session_id: str) -> None:
+    get_session(db, client_id, session_id)
+    db[MESSAGES].delete_many({"session_id": session_id})
+    db[SESSIONS].delete_one({"_id": session_id})
+
+
+def recent_history(messages: list[MessageRecord], limit: int) -> list[ChatMessage]:
+    usable = [message for message in messages if message.status != MessageStatus.FAILED]
     return [
         {
             "role": "user" if message.role is MessageRole.USER else "assistant",
@@ -69,71 +75,70 @@ def recent_history(session: ChatSession, limit: int) -> list[ChatMessage]:
     ]
 
 
-def add_question(db: Session, session: ChatSession, content: str) -> Message:
-    if session.title == DEFAULT_TITLE and not session.messages:
-        session.title = title_from_question(content)
-    message = Message(session_id=session.id, role=MessageRole.USER, content=content)
-    session.updated_at = datetime.now(UTC)
-    db.add(message)
-    db.commit()
+def save_message(db: Database, message: MessageRecord) -> MessageRecord:
+    db[MESSAGES].insert_one(message.to_mongo())
+    db[SESSIONS].update_one({"_id": message.session_id}, {"$set": {"updated_at": utcnow()}})
     return message
+
+
+def add_question(db: Database, session: SessionRecord, content: str, first: bool) -> MessageRecord:
+    if first and session.title == DEFAULT_TITLE:
+        db[SESSIONS].update_one(
+            {"_id": session.id}, {"$set": {"title": title_from_question(content)}}
+        )
+    return save_message(
+        db,
+        MessageRecord(
+            id=str(uuid.uuid4()),
+            session_id=session.id,
+            role=MessageRole.USER,
+            content=content,
+            created_at=utcnow(),
+        ),
+    )
 
 
 def serialize_citations(answer: Answer) -> list[dict[str, Any]]:
-    return [
-        {
-            **asdict(citation),
-            "chunk_id": str(citation.chunk_id),
-            "document_id": str(citation.document_id),
-        }
-        for citation in answer.citations
-    ]
+    return [asdict(citation) for citation in answer.citations]
 
 
-def add_answer(db: Session, session_id: uuid.UUID, answer: Answer) -> Message:
-    message = Message(
-        session_id=session_id,
-        role=MessageRole.ASSISTANT,
-        content=answer.text,
-        status=MessageStatus(answer.status.value),
-        citations=serialize_citations(answer),
-        metrics=answer.metrics(),
+def add_answer(db: Database, session_id: str, answer: Answer) -> MessageRecord:
+    return save_message(
+        db,
+        MessageRecord(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            role=MessageRole.ASSISTANT,
+            content=answer.text,
+            created_at=utcnow(),
+            status=MessageStatus(answer.status.value),
+            citations=serialize_citations(answer),
+            metrics=answer.metrics(),
+        ),
     )
-    db.add(message)
-    touch_session(db, session_id)
-    db.commit()
-    return message
 
 
-def add_failure(db: Session, session_id: uuid.UUID, content: str, reason: str) -> Message:
-    message = Message(
-        session_id=session_id,
-        role=MessageRole.ASSISTANT,
-        content=content,
-        status=MessageStatus.FAILED,
-        citations=[],
-        metrics={"failure_reason": reason},
+def add_failure(db: Database, session_id: str, content: str, reason: str) -> MessageRecord:
+    return save_message(
+        db,
+        MessageRecord(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            role=MessageRole.ASSISTANT,
+            content=content,
+            created_at=utcnow(),
+            status=MessageStatus.FAILED,
+            metrics={"failure_reason": reason},
+        ),
     )
-    db.add(message)
-    touch_session(db, session_id)
-    db.commit()
-    return message
 
 
-def touch_session(db: Session, session_id: uuid.UUID) -> None:
-    session = db.get(ChatSession, session_id)
-    if session is not None:
-        session.updated_at = datetime.now(UTC)
-
-
-def set_feedback(db: Session, user: User, message_id: uuid.UUID, value: int | None) -> Message:
-    message = db.get(Message, message_id)
-    if (
-        message is None
-        or message.role is not MessageRole.ASSISTANT
-        or message.session.user_id != user.id
-    ):
+def set_feedback(db: Database, client_id: str, message_id: str, value: int | None) -> MessageRecord:
+    raw = db[MESSAGES].find_one({"_id": message_id, "role": MessageRole.ASSISTANT.value})
+    if raw is None:
         raise NotFoundError("Message not found")
-    message.feedback = value
-    db.commit()
-    return message
+    if db[SESSIONS].count_documents({"_id": raw["session_id"], "client_id": client_id}) == 0:
+        raise NotFoundError("Message not found")
+    db[MESSAGES].update_one({"_id": message_id}, {"$set": {"feedback": value}})
+    raw["feedback"] = value
+    return MessageRecord.from_mongo(raw)

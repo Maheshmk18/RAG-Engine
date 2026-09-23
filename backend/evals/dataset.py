@@ -57,8 +57,8 @@ def build_corpus(directory: Path, pipeline: IngestionPipeline) -> InMemoryChunkS
         for draft, embedding in zip(prepared.drafts, prepared.embeddings, strict=True):
             records.append(
                 ChunkRecord(
-                    id=uuid.uuid5(document_id, str(draft.ordinal)),
-                    document_id=document_id,
+                    id=str(uuid.uuid5(document_id, str(draft.ordinal))),
+                    document_id=str(document_id),
                     document_title=prepared.title,
                     heading=draft.heading,
                     page=draft.page,

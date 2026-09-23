@@ -3,7 +3,7 @@ import math
 import re
 from collections.abc import Iterator, Sequence
 
-from app.db.models import EMBEDDING_DIMENSIONS
+from app.db.mongo import EMBEDDING_DIMENSIONS
 from app.generation.llm import ChatMessage, Completion, Usage
 from app.retrieval.bm25 import tokenize
 

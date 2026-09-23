@@ -1,4 +1,3 @@
-import uuid
 from dataclasses import dataclass
 
 from app.retrieval.embeddings import Embedder
@@ -39,7 +38,7 @@ class RetrievalResult:
         return max((passage.relevance for passage in self.passages), default=0.0)
 
 
-def rank_of(ranking: list[uuid.UUID]) -> dict[uuid.UUID, int]:
+def rank_of(ranking: list[str]) -> dict[str, int]:
     return {chunk_id: position for position, chunk_id in enumerate(ranking, start=1)}
 
 

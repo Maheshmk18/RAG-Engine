@@ -20,9 +20,6 @@ USER app
 
 RUN python -c "from app.core.config import Settings; from app.runtime import build_embedder, build_reranker; settings = Settings(); build_embedder(settings).model; build_reranker(settings).model"
 
-COPY alembic.ini ./
-COPY migrations ./migrations
-
 EXPOSE 8000
 
-CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]
+CMD ["sh", "-c", "exec uvicorn app.main:create_app --factory --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

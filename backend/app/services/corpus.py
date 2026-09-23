@@ -1,18 +1,14 @@
-from sqlalchemy import select
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.orm import Session
+from pymongo.database import Database
 
-from app.db.models import CorpusState
+from app.db.mongo import CORPUS
 
-
-def bump_corpus_version(db: Session) -> None:
-    statement = insert(CorpusState).values(id=1, version=1)
-    db.execute(
-        statement.on_conflict_do_update(
-            index_elements=[CorpusState.id], set_={"version": CorpusState.version + 1}
-        )
-    )
+CORPUS_KEY = "corpus"
 
 
-def current_corpus_version(db: Session) -> int:
-    return db.scalar(select(CorpusState.version).where(CorpusState.id == 1)) or 0
+def bump_corpus_version(db: Database) -> None:
+    db[CORPUS].update_one({"_id": CORPUS_KEY}, {"$inc": {"version": 1}}, upsert=True)
+
+
+def current_corpus_version(db: Database) -> int:
+    state = db[CORPUS].find_one({"_id": CORPUS_KEY})
+    return int(state["version"]) if state else 0

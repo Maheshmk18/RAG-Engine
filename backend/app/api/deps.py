@@ -1,16 +1,18 @@
-from collections.abc import Iterator
+import re
+import secrets
 from typing import Annotated
 
-from fastapi import Depends, Request
-from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy.orm import Session
+from fastapi import Depends, Header, Request
+from pymongo.database import Database
 
 from app.core.config import Settings
-from app.core.errors import AuthenticationError, PermissionDeniedError
-from app.core.security import decode_access_token
-from app.db.models import User
+from app.core.errors import AppError, PermissionDeniedError
 
-bearer_scheme = HTTPBearer(auto_error=False)
+CLIENT_ID_PATTERN = re.compile(r"^[A-Za-z0-9-]{16,64}$")
+
+
+class MissingClientError(AppError):
+    code = "client_id_required"
 
 
 def get_settings_dependency(request: Request) -> Settings:
@@ -18,41 +20,38 @@ def get_settings_dependency(request: Request) -> Settings:
     return settings
 
 
-def get_db(request: Request) -> Iterator[Session]:
-    session: Session = request.app.state.session_factory()
-    try:
-        yield session
-    finally:
-        session.close()
+def get_database(request: Request) -> Database:
+    db: Database = request.app.state.database
+    return db
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings_dependency)]
-DbSession = Annotated[Session, Depends(get_db)]
+DatabaseDep = Annotated[Database, Depends(get_database)]
 
 
-def get_current_user(
-    db: DbSession,
-    settings: SettingsDep,
-    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
-) -> User:
-    if credentials is None:
-        raise AuthenticationError("Authentication required")
-    claims = decode_access_token(credentials.credentials, settings)
-    if claims is None:
-        raise AuthenticationError("Session expired or invalid")
-    user = db.get(User, claims.user_id)
-    if user is None or not user.is_active:
-        raise AuthenticationError("Session expired or invalid")
-    return user
+def get_client_id(x_client_id: Annotated[str | None, Header()] = None) -> str:
+    if not x_client_id or not CLIENT_ID_PATTERN.match(x_client_id):
+        raise MissingClientError("An X-Client-Id header is required")
+    return x_client_id
 
 
-CurrentUser = Annotated[User, Depends(get_current_user)]
+ClientId = Annotated[str, Depends(get_client_id)]
 
 
-def require_admin(user: CurrentUser) -> User:
-    if not user.is_admin:
-        raise PermissionDeniedError("Administrator access required")
-    return user
+def require_admin(
+    settings: SettingsDep, x_admin_key: Annotated[str | None, Header()] = None
+) -> None:
+    expected = settings.admin_api_key.get_secret_value() if settings.admin_api_key else ""
+    if not expected:
+        raise PermissionDeniedError(
+            "Document management is disabled. Set ADMIN_API_KEY on the server to enable it."
+        )
+    if not x_admin_key or not secrets.compare_digest(x_admin_key, expected):
+        raise PermissionDeniedError("The admin key is not valid")
 
 
-AdminUser = Annotated[User, Depends(require_admin)]
+AdminAccess = Annotated[None, Depends(require_admin)]
+
+
+def client_address(request: Request) -> str:
+    return request.client.host if request.client else "unknown"

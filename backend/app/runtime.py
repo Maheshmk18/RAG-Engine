@@ -1,9 +1,10 @@
 import logging
 import time
 
+from pymongo.database import Database
+
 from app.core.config import Settings
-from app.db.models import EMBEDDING_DIMENSIONS
-from app.db.session import SessionFactory
+from app.db.mongo import EMBEDDING_DIMENSIONS
 from app.generation.answerer import AnswerConfig, AnswerService
 from app.generation.llm import GroqClient, LLMClient, UnconfiguredClient
 from app.ingestion.pipeline import IngestionPipeline
@@ -30,11 +31,9 @@ def build_pipeline(settings: Settings, embedder: Embedder) -> IngestionPipeline:
     return IngestionPipeline(embedder, settings.chunk_max_words, settings.chunk_overlap_words)
 
 
-def build_worker(
-    settings: Settings, session_factory: SessionFactory, pipeline: IngestionPipeline
-) -> IngestionWorker:
+def build_worker(settings: Settings, db: Database, pipeline: IngestionPipeline) -> IngestionWorker:
     return IngestionWorker(
-        session_factory,
+        db,
         pipeline,
         max_attempts=settings.worker_max_attempts,
         stale_after_seconds=settings.worker_stale_after_seconds,

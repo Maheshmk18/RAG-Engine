@@ -1,18 +1,14 @@
-name: rag-engine
+name: enterprise-rag
 
 services:
-  db:
-    image: pgvector/pgvector:pg16
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: ragengine
+  mongo:
+    image: mongo:8
     ports:
-      - "5432:5432"
+      - "27017:27017"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - mongodata:/data/db
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d ragengine"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.runCommand({ping: 1}).ok"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -21,27 +17,24 @@ services:
     build: ./backend
     environment: &backend-env
       ENVIRONMENT: development
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/ragengine
+      MONGODB_URL: mongodb://mongo:27017
+      MONGODB_DATABASE: enterprise_rag
       CORS_ORIGINS: http://localhost:5173
-      MODEL_CACHE_DIR: /srv/models
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
     ports:
       - "8000:8000"
-    volumes:
-      - models:/srv/models
     depends_on:
-      db:
+      mongo:
         condition: service_healthy
 
   worker:
     build: ./backend
     command: ["python", "-m", "app.worker"]
     environment: *backend-env
-    volumes:
-      - models:/srv/models
     depends_on:
-      api:
-        condition: service_started
+      mongo:
+        condition: service_healthy
 
 volumes:
-  pgdata:
-  models:
+  mongodata:

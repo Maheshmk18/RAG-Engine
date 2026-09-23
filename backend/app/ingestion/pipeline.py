@@ -2,16 +2,17 @@ import logging
 import time
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
-from sqlalchemy import delete
-from sqlalchemy.orm import Session
+from pymongo import ReturnDocument
+from pymongo.database import Database
 
-from app.db.models import Chunk, Document, DocumentStatus
+from app.db.mongo import CHUNKS, DOCUMENTS, utcnow
+from app.db.records import DocumentRecord, DocumentStatus
 from app.ingestion.chunking import ChunkDraft, chunk_blocks
 from app.ingestion.extract import ExtractionError, detect_kind, extract
 from app.retrieval.embeddings import Embedder
 from app.services.corpus import bump_corpus_version
+from app.services.documents import read_file
 
 logger = logging.getLogger(__name__)
 
@@ -42,41 +43,56 @@ class IngestionPipeline:
         )
         return PreparedDocument(title, drafts, embeddings, extracted.page_count)
 
-    def process(self, db: Session, document_id: uuid.UUID) -> Document:
-        document = db.get(Document, document_id)
-        if document is None:
+    def process(self, db: Database, document_id: str) -> DocumentRecord:
+        raw = db[DOCUMENTS].find_one({"_id": document_id})
+        if raw is None:
             raise LookupError(f"Document {document_id} no longer exists")
+        document = DocumentRecord.from_mongo(raw)
         started = time.perf_counter()
-        prepared = self.prepare(document.title, document.filename, document.file.data)
+        prepared = self.prepare(document.title, document.filename, read_file(db, document))
 
-        db.execute(delete(Chunk).where(Chunk.document_id == document.id))
-        db.add_all(
-            Chunk(
-                document_id=document.id,
-                ordinal=draft.ordinal,
-                heading=draft.heading,
-                page=draft.page,
-                text=draft.text,
-                word_count=draft.word_count,
-                embedding=embedding,
+        db[CHUNKS].delete_many({"document_id": document.id})
+        if prepared.drafts:
+            db[CHUNKS].insert_many(
+                [
+                    {
+                        "_id": str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal))),
+                        "document_id": document.id,
+                        "document_title": prepared.title,
+                        "ordinal": draft.ordinal,
+                        "heading": draft.heading,
+                        "page": draft.page,
+                        "text": draft.text,
+                        "word_count": draft.word_count,
+                        "embedding": embedding,
+                    }
+                    for draft, embedding in zip(prepared.drafts, prepared.embeddings, strict=True)
+                ]
             )
-            for draft, embedding in zip(prepared.drafts, prepared.embeddings, strict=True)
+        now = utcnow()
+        updated = db[DOCUMENTS].find_one_and_update(
+            {"_id": document.id},
+            {
+                "$set": {
+                    "title": prepared.title,
+                    "status": DocumentStatus.READY.value,
+                    "chunk_count": len(prepared.drafts),
+                    "page_count": prepared.page_count,
+                    "error_message": None,
+                    "processed_at": now,
+                    "updated_at": now,
+                }
+            },
+            return_document=ReturnDocument.AFTER,
         )
-        document.title = prepared.title
-        document.status = DocumentStatus.READY
-        document.chunk_count = len(prepared.drafts)
-        document.page_count = prepared.page_count
-        document.error_message = None
-        document.processed_at = datetime.now(UTC)
         bump_corpus_version(db)
-        db.commit()
 
         logger.info(
             "document ingested",
             extra={
-                "document_id": str(document.id),
-                "chunks": document.chunk_count,
+                "document_id": document.id,
+                "chunks": len(prepared.drafts),
                 "duration_ms": round((time.perf_counter() - started) * 1000, 1),
             },
         )
-        return document
+        return DocumentRecord.from_mongo(updated or raw)

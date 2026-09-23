@@ -12,8 +12,8 @@ from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import SlidingWindowRateLimiter
-from app.db.session import create_db_engine, create_session_factory
-from app.retrieval.store import PostgresChunkStore
+from app.db.mongo import create_client, ensure_indexes
+from app.retrieval.store import MongoChunkStore
 from app.runtime import (
     build_answer_service,
     build_embedder,
@@ -35,19 +35,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("service starting", extra={"environment": settings.environment})
+        ensure_indexes(app.state.database, settings)
         stop = threading.Event()
         worker_thread: threading.Thread | None = None
         if settings.warm_models_on_startup:
             threading.Thread(target=warm_up, args=(app.state.retriever,), daemon=True).start()
         if settings.embedded_worker:
-            worker = build_worker(settings, app.state.session_factory, app.state.pipeline)
+            worker = build_worker(settings, app.state.database, app.state.pipeline)
             worker_thread = threading.Thread(target=worker.run, args=(stop,), daemon=True)
             worker_thread.start()
         yield
         stop.set()
         if worker_thread is not None:
             worker_thread.join(timeout=30)
-        app.state.engine.dispose()
+        app.state.mongo.close()
         logger.info("service stopped")
 
     app = FastAPI(
@@ -59,23 +60,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
-    engine = create_db_engine(settings)
+    client = create_client(settings)
     app.state.settings = settings
-    app.state.engine = engine
-    app.state.session_factory = create_session_factory(engine)
+    app.state.mongo = client
+    app.state.database = client[settings.mongodb_database]
     app.state.embedder = build_embedder(settings)
     app.state.pipeline = build_pipeline(settings, app.state.embedder)
     app.state.retriever = build_retriever(
         settings,
-        PostgresChunkStore(app.state.session_factory),
+        MongoChunkStore(app.state.database, settings.vector_search, settings.atlas_vector_index),
         app.state.embedder,
         build_reranker(settings),
     )
     app.state.answer_service = build_answer_service(
         settings, app.state.retriever, build_llm(settings)
-    )
-    app.state.login_limiter = SlidingWindowRateLimiter(
-        settings.login_rate_limit, settings.login_rate_window_seconds
     )
     app.state.chat_limiter = SlidingWindowRateLimiter(settings.chat_rate_limit_per_minute, 60)
 
@@ -83,7 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+        allow_headers=["Content-Type", "X-Request-ID", "X-Client-Id", "X-Admin-Key"],
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestContextMiddleware)

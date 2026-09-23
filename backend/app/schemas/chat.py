@@ -1,18 +1,17 @@
-import uuid
 from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from app.db.models import MessageRole, MessageStatus
+from app.db.records import MessageRole, MessageStatus
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
 class CitationRead(BaseModel):
     number: int
-    chunk_id: uuid.UUID
-    document_id: uuid.UUID
+    chunk_id: str
+    document_id: str
     document_title: str
     heading: str | None
     page: int | None
@@ -23,7 +22,7 @@ class CitationRead(BaseModel):
 class MessageRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: str
     role: MessageRole
     content: str
     status: MessageStatus | None
@@ -35,7 +34,7 @@ class MessageRead(BaseModel):
 class SessionRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: uuid.UUID
+    id: str
     title: str
     created_at: datetime
     updated_at: datetime
