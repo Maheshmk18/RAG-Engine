@@ -15,7 +15,7 @@ class RetrievalConfig:
     lexical_candidates: int = 30
     rerank_candidates: int = 12
     top_k: int = 5
-    min_relevance: float = 0.1
+    min_relevance: float = 0.00005
     rrf_k: int = 60
 
 
@@ -96,8 +96,10 @@ class HybridRetriever:
                 key=lambda passage: passage.relevance,
                 reverse=True,
             )
-            passages = [p for p in scored if p.relevance >= config.min_relevance][: config.top_k]
+            best = scored[0].relevance if scored else 0.0
+            on_topic = best >= config.min_relevance
+            passages = scored[: config.top_k] if on_topic else []
             span["kept"] = len(passages)
-            span["best_relevance"] = scored[0].relevance if scored else 0.0
+            span["best_relevance"] = best
 
         return RetrievalResult(query=query, passages=passages, candidates=len(candidates))

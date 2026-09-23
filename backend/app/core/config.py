@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     retrieval_lexical_candidates: int = 30
     retrieval_rerank_candidates: int = 12
     retrieval_top_k: int = 5
-    retrieval_min_relevance: float = 0.1
+    retrieval_min_relevance: float = 0.00005
     retrieval_rrf_k: int = 60
 
     groq_api_key: SecretStr | None = None

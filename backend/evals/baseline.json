@@ -1,0 +1,49 @@
+{
+  "metrics": {
+    "retrieval": {
+      "hit_rate": 1.0,
+      "recall": 0.9878,
+      "mrr": 0.9805,
+      "ndcg": 0.9756,
+      "unanswerable_rejection": 0.75
+    },
+    "ablation": {
+      "dense": {
+        "hit_rate": 0.9756,
+        "recall": 0.9634,
+        "mrr": 0.9512,
+        "ndcg": 0.9474
+      },
+      "bm25": {
+        "hit_rate": 0.9268,
+        "recall": 0.9146,
+        "mrr": 0.8077,
+        "ndcg": 0.8282
+      },
+      "hybrid": {
+        "hit_rate": 0.9756,
+        "recall": 0.9634,
+        "mrr": 0.9024,
+        "ndcg": 0.9116
+      },
+      "hybrid_rerank": {
+        "hit_rate": 1.0,
+        "recall": 0.9878,
+        "mrr": 0.9805,
+        "ndcg": 0.9756
+      }
+    },
+    "latency": {
+      "retrieval": {
+        "p50": 600.3,
+        "p95": 876.4
+      },
+      "rerank": {
+        "p50": 537.0,
+        "p95": 842.9
+      }
+    }
+  },
+  "revision": "0a4085c",
+  "generated_at": "2026-09-23T06:37:49+00:00"
+}

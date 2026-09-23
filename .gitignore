@@ -25,3 +25,4 @@ frontend/dist/
 .DS_Store
 Thumbs.db
 *.egg-info/
+backend/evals/reports/
