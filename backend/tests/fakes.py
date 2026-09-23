@@ -4,6 +4,7 @@ import re
 from collections.abc import Sequence
 
 from app.db.models import EMBEDDING_DIMENSIONS
+from app.retrieval.bm25 import tokenize
 
 TOKEN = re.compile(r"[a-z0-9]+")
 
@@ -24,3 +25,12 @@ class HashingEmbedder:
 
     def embed_query(self, text: str) -> list[float]:
         return self._vector(text)
+
+
+class OverlapReranker:
+    def score(self, query: str, passages: Sequence[str]) -> list[float]:
+        terms = set(tokenize(query))
+        return [
+            round(len(terms & set(tokenize(passage))) / len(terms), 6) if terms else 0.0
+            for passage in passages
+        ]

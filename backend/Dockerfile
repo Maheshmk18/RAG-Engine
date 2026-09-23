@@ -18,7 +18,7 @@ RUN pip install .
 
 USER app
 
-RUN python -c "from app.core.config import Settings; from app.runtime import build_embedder; build_embedder(Settings()).model"
+RUN python -c "from app.core.config import Settings; from app.runtime import build_embedder, build_reranker; settings = Settings(); build_embedder(settings).model; build_reranker(settings).model"
 
 COPY alembic.ini ./
 COPY migrations ./migrations

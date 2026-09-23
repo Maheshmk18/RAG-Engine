@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     worker_max_attempts: int = 3
     worker_stale_after_seconds: int = 600
 
+    reranker_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"
+    retrieval_dense_candidates: int = 30
+    retrieval_lexical_candidates: int = 30
+    retrieval_rerank_candidates: int = 12
+    retrieval_top_k: int = 5
+    retrieval_min_relevance: float = 0.1
+    retrieval_rrf_k: int = 60
+
     @field_validator("database_url")
     @classmethod
     def use_psycopg_driver(cls, value: str) -> str:

@@ -13,7 +13,14 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.session import create_db_engine, create_session_factory
-from app.runtime import build_embedder, build_pipeline, build_worker
+from app.retrieval.store import PostgresChunkStore
+from app.runtime import (
+    build_embedder,
+    build_pipeline,
+    build_reranker,
+    build_retriever,
+    build_worker,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +60,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = create_session_factory(engine)
     app.state.embedder = build_embedder(settings)
     app.state.pipeline = build_pipeline(settings, app.state.embedder)
+    app.state.retriever = build_retriever(
+        settings,
+        PostgresChunkStore(app.state.session_factory),
+        app.state.embedder,
+        build_reranker(settings),
+    )
     app.state.login_limiter = SlidingWindowRateLimiter(
         settings.login_rate_limit, settings.login_rate_window_seconds
     )

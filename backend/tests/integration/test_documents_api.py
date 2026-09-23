@@ -95,7 +95,9 @@ def test_members_can_read_but_not_upload(
     client: TestClient, admin: User, member: User, auth_headers: Headers
 ) -> None:
     upload(client, auth_headers(admin), "travel.md", POLICY)
-    assert upload(client, auth_headers(member), "other.md", b"# Other\n\nText")["http_status"] == 403
+    assert (
+        upload(client, auth_headers(member), "other.md", b"# Other\n\nText")["http_status"] == 403
+    )
     listed = client.get("/api/v1/documents", headers=auth_headers(member)).json()
     assert [item["filename"] for item in listed] == ["travel.md"]
 

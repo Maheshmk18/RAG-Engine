@@ -6,6 +6,11 @@ from app.ingestion.extract import Block
 SENTENCE_BOUNDARY = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"'(“])")
 
 
+def contextual_text(title: str, heading: str | None, text: str) -> str:
+    context = " > ".join(part for part in (title, heading) if part)
+    return f"{context}\n{text}"
+
+
 @dataclass(frozen=True)
 class ChunkDraft:
     ordinal: int
@@ -18,8 +23,7 @@ class ChunkDraft:
         return len(self.text.split())
 
     def contextual_text(self, title: str) -> str:
-        context = " > ".join(part for part in (title, self.heading) if part)
-        return f"{context}\n{self.text}"
+        return contextual_text(title, self.heading, self.text)
 
 
 @dataclass
