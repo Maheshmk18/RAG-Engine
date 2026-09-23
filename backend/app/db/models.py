@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -12,10 +13,13 @@ from sqlalchemy import (
     Index,
     Integer,
     LargeBinary,
+    SmallInteger,
     String,
     Text,
     UniqueConstraint,
+    func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, Timestamped, UUIDPrimaryKey
@@ -32,6 +36,17 @@ class DocumentStatus(StrEnum):
     PENDING = "pending"
     PROCESSING = "processing"
     READY = "ready"
+    FAILED = "failed"
+
+
+class MessageRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+
+
+class MessageStatus(StrEnum):
+    ANSWERED = "answered"
+    ABSTAINED = "abstained"
     FAILED = "failed"
 
 
@@ -127,3 +142,40 @@ class CorpusState(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     version: Mapped[int] = mapped_column(BigInteger, default=0)
+
+
+class ChatSession(UUIDPrimaryKey, Timestamped, Base):
+    __tablename__ = "chat_sessions"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(200))
+
+    messages: Mapped[list["Message"]] = relationship(
+        back_populates="session",
+        order_by="Message.created_at",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class Message(UUIDPrimaryKey, Base):
+    __tablename__ = "chat_messages"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("chat_sessions.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[MessageRole] = mapped_column(enum_column(MessageRole, "message_role"))
+    content: Mapped[str] = mapped_column(Text)
+    status: Mapped[MessageStatus | None] = mapped_column(
+        enum_column(MessageStatus, "message_status")
+    )
+    citations: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    feedback: Mapped[int | None] = mapped_column(SmallInteger)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.clock_timestamp(), nullable=False
+    )
+
+    session: Mapped[ChatSession] = relationship(back_populates="messages")

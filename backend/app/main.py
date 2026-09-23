@@ -15,7 +15,9 @@ from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.session import create_db_engine, create_session_factory
 from app.retrieval.store import PostgresChunkStore
 from app.runtime import (
+    build_answer_service,
     build_embedder,
+    build_llm,
     build_pipeline,
     build_reranker,
     build_retriever,
@@ -66,9 +68,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         app.state.embedder,
         build_reranker(settings),
     )
+    app.state.answer_service = build_answer_service(
+        settings, app.state.retriever, build_llm(settings)
+    )
     app.state.login_limiter = SlidingWindowRateLimiter(
         settings.login_rate_limit, settings.login_rate_window_seconds
     )
+    app.state.chat_limiter = SlidingWindowRateLimiter(settings.chat_rate_limit_per_minute, 60)
 
     app.add_middleware(
         CORSMiddleware,

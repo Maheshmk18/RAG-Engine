@@ -1,9 +1,10 @@
 import hashlib
 import math
 import re
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
 
 from app.db.models import EMBEDDING_DIMENSIONS
+from app.generation.llm import ChatMessage, Completion, Usage
 from app.retrieval.bm25 import tokenize
 
 TOKEN = re.compile(r"[a-z0-9]+")
@@ -34,3 +35,36 @@ class OverlapReranker:
             round(len(terms & set(tokenize(passage))) / len(terms), 6) if terms else 0.0
             for passage in passages
         ]
+
+
+class ScriptedLLM:
+    def __init__(
+        self,
+        answers: Sequence[str] = (),
+        completions: Sequence[str] = (),
+        failure: Exception | None = None,
+    ) -> None:
+        self.answers = list(answers)
+        self.completions = list(completions)
+        self.failure = failure
+        self.calls: list[tuple[str, list[ChatMessage]]] = []
+
+    def complete(
+        self, messages: list[ChatMessage], *, model: str, temperature: float, max_tokens: int
+    ) -> Completion:
+        self.calls.append(("complete", messages))
+        if self.failure:
+            raise self.failure
+        return Completion(self.completions.pop(0), model, Usage(100, 20))
+
+    def stream(
+        self, messages: list[ChatMessage], *, model: str, temperature: float, max_tokens: int
+    ) -> Iterator[str | Completion]:
+        self.calls.append(("stream", messages))
+        if self.failure:
+            raise self.failure
+        text = self.answers.pop(0)
+        words = text.split(" ")
+        for index, word in enumerate(words):
+            yield word if index == len(words) - 1 else word + " "
+        yield Completion(text, model, Usage(400, len(words)))

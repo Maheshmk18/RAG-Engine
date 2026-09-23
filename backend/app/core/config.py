@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 DEVELOPMENT_JWT_SECRET = "development-only-secret-never-use-in-production"
@@ -45,6 +45,18 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 5
     retrieval_min_relevance: float = 0.1
     retrieval_rrf_k: int = 60
+
+    groq_api_key: SecretStr | None = None
+    answer_model: str = "llama-3.3-70b-versatile"
+    rewrite_model: str = "llama-3.1-8b-instant"
+    llm_temperature: float = 0.1
+    llm_max_tokens: int = 800
+    llm_timeout_seconds: float = 30.0
+    llm_max_retries: int = 2
+    citation_min_coverage: float = 0.8
+    chat_history_messages: int = 6
+    chat_rate_limit_per_minute: int = 20
+    chat_max_question_chars: int = 2000
 
     @field_validator("database_url")
     @classmethod
