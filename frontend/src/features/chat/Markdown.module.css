@@ -1,0 +1,84 @@
+.markdown {
+  font-size: var(--text-md);
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.markdown > * + * {
+  margin-top: 0.75em;
+}
+
+.markdown ul,
+.markdown ol {
+  margin-bottom: 0;
+  padding-left: 1.25em;
+}
+
+.markdown li + li {
+  margin-top: 0.3em;
+}
+
+.markdown strong {
+  font-weight: 600;
+}
+
+.markdown code {
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  font-size: var(--text-base);
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  text-align: left;
+}
+
+.cite {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin: 0 1px 0 3px;
+  padding: 0 4px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--accent-text);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  vertical-align: 2px;
+  transition:
+    background var(--duration) var(--ease),
+    border-color var(--duration) var(--ease);
+}
+
+.cite:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.cite:disabled {
+  color: var(--text-faint);
+  cursor: default;
+}
+
+.citeActive {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.citeActive:hover:not(:disabled) {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}

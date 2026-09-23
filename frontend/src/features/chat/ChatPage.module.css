@@ -1,0 +1,105 @@
+.layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.conversation {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.scroller {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.column {
+  width: min(var(--reading-width), 100%);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.scroller > .column {
+  display: grid;
+  gap: var(--space-10);
+  padding-top: var(--space-10);
+  padding-bottom: var(--space-10);
+}
+
+.turn {
+  display: grid;
+  gap: var(--space-5);
+}
+
+.dock {
+  padding: var(--space-3) 0 var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.disclaimer {
+  margin-top: var(--space-2);
+  color: var(--text-faint);
+  font-size: var(--text-xs);
+  text-align: center;
+}
+
+.welcome {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: 12vh;
+}
+
+.examples {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+}
+
+.example {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text-muted);
+  text-align: left;
+  transition:
+    border-color var(--duration) var(--ease),
+    color var(--duration) var(--ease);
+}
+
+.example:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+
+.loading {
+  display: grid;
+  place-items: center;
+  padding: var(--space-12);
+  color: var(--text-muted);
+}
+
+.missing {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .column {
+    padding: 0 var(--space-4);
+  }
+
+  .examples {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .welcome {
+    padding-top: var(--space-8);
+  }
+}
