@@ -1,4 +1,6 @@
 import { ArrowRight, ArrowUp, CornerDownRight, FileText, Plus, SearchX } from "lucide-react";
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 import { Wordmark } from "@/components/Wordmark";
 import styles from "./LandingPage.module.css";
@@ -67,6 +69,32 @@ const OPERATIONS = [
   },
 ];
 
+const USE_CASES = [
+  {
+    team: "People and HR",
+    question: "How long do I get full pay when I am off sick?",
+    body: "Leave, benefits, sickness and performance policies, answered the same way for everyone.",
+  },
+  {
+    team: "IT and security",
+    question: "What do I do if my laptop is stolen?",
+    body: "Runbooks and security rules people need at the exact moment something goes wrong.",
+  },
+  {
+    team: "Finance",
+    question: "Who has to approve an expense claim of 1,500?",
+    body: "Travel limits, approval thresholds and reimbursement rules without searching a PDF.",
+  },
+  {
+    team: "Onboarding",
+    question: "Which training do I have to finish in my first week?",
+    body: "New starters get answers on day one instead of waiting for someone to reply.",
+  },
+];
+
+const FORMATS = ["PDF", "Word", "Markdown", "Plain text"];
+const STACK = ["MongoDB", "Groq", "FastAPI", "React"];
+
 const QUESTIONS = [
   {
     q: "What kinds of documents can it read?",
@@ -86,7 +114,7 @@ const QUESTIONS = [
   },
   {
     q: "How do we add our own documents?",
-    a: "Open Documents, choose Manage documents and enter the admin key configured on the server. Files are indexed in the background, usually within seconds.",
+    a: "Choose Upload documents in the sidebar, enter the admin key configured on the server, then drop your files in. They are indexed in the background and can be asked about within seconds.",
   },
 ];
 
@@ -94,70 +122,153 @@ function Cite({ n }: { n: number }) {
   return <span className={styles.cite}>{n}</span>;
 }
 
+interface Example {
+  tab: string;
+  question: string;
+  answer: ReactNode;
+  sources: { heading: string; document: string }[];
+  passage: string;
+}
+
+const EXAMPLES: Example[] = [
+  {
+    tab: "Holiday carry-over",
+    question: "Can I carry unused holiday into next year?",
+    answer: (
+      <>
+        <p>
+          Yes, up to <strong>5 unused days</strong> <Cite n={1} />. They have to be taken by{" "}
+          <strong>31 March</strong>, after which they are forfeited <Cite n={1} />.
+        </p>
+        <p>
+          If you were ill during your holiday, those days can be reclassified as sick leave and
+          returned to your balance <Cite n={2} />.
+        </p>
+      </>
+    ),
+    sources: [
+      { document: "Annual Leave Policy", heading: "Carry-Over" },
+      { document: "Annual Leave Policy", heading: "Sickness During Leave" },
+    ],
+    passage:
+      "Employees may carry over a maximum of 5 unused days into the next calendar year. Carried-over days must be used by 31 March of the following year, after which they are forfeited.",
+  },
+  {
+    tab: "Hotel limits",
+    question: "What can I spend on a hotel in New York?",
+    answer: (
+      <>
+        <p>
+          In New York the limit is <strong>275 per night</strong> <Cite n={1} />, compared with 200
+          per night in most other cities <Cite n={1} />.
+        </p>
+        <p>
+          Book it through the travel portal so the company can reach you in an emergency{" "}
+          <Cite n={1} />.
+        </p>
+      </>
+    ),
+    sources: [{ document: "Travel and Expenses Policy", heading: "Hotels" }],
+    passage:
+      "Hotel costs are reimbursed up to 200 per night. In London, New York and San Francisco the limit is 275 per night. Hotels should be booked through the travel portal so that the company can locate employees in an emergency.",
+  },
+  {
+    tab: "Lost laptop",
+    question: "I left my work laptop on the train. What now?",
+    answer: (
+      <>
+        <p>
+          Report it to <strong>security@kestrel.example</strong> within <strong>one hour</strong> of
+          noticing it is missing <Cite n={1} />.
+        </p>
+        <p>
+          The Security Team will lock and wipe it remotely <Cite n={1} />, and reporting late is
+          treated as a security incident <Cite n={1} />.
+        </p>
+      </>
+    ),
+    sources: [{ document: "IT Security Guidelines", heading: "Lost or Stolen Devices" }],
+    passage:
+      "Report a lost or stolen laptop or phone to security@kestrel.example within one hour of noticing it is missing. The Security Team will remotely lock and wipe the device. A delay in reporting a lost device is treated as a security incident.",
+  },
+];
+
 function AppPreview() {
+  const [active, setActive] = useState(0);
+  const example = EXAMPLES[active] ?? EXAMPLES[0];
+  if (!example) return null;
+  const first = example.sources[0];
+
   return (
-    <div className={styles.window} aria-hidden="true">
-      <div className={styles.windowBar}>
-        <span />
-        <span />
-        <span />
+    <div className={styles.demo}>
+      <div className={styles.tabs} role="tablist" aria-label="Example questions">
+        {EXAMPLES.map((item, index) => (
+          <button
+            key={item.tab}
+            type="button"
+            role="tab"
+            aria-selected={index === active}
+            className={styles.tab}
+            onClick={() => setActive(index)}
+          >
+            {item.tab}
+          </button>
+        ))}
       </div>
-      <div className={styles.app}>
-        <div className={styles.appSidebar}>
-          <div className={styles.appBrand}>
-            <span className={styles.appMark} />
-            Enterprise RAG
-          </div>
-          <div className={styles.appNew}>
-            <Plus size={12} /> New conversation
-          </div>
-          <p className={styles.appGroup}>Today</p>
-          <p className={`${styles.appItem} ${styles.appItemActive}`}>Carrying over holiday</p>
-          <p className={styles.appItem}>Hotel limit in London</p>
-          <p className={styles.appItem}>Lost laptop procedure</p>
-          <p className={styles.appGroup}>Yesterday</p>
-          <p className={styles.appItem}>Parental leave notice</p>
-          <p className={styles.appItem}>Working from abroad</p>
+      <div className={styles.window}>
+        <div className={styles.windowBar}>
+          <span />
+          <span />
+          <span />
         </div>
-        <div className={styles.appChat}>
-          <p className={styles.bubble}>Can I carry unused holiday into next year?</p>
-          <div className={styles.appAnswer}>
-            <p>
-              Yes, up to <strong>5 unused days</strong> <Cite n={1} />. They have to be taken by{" "}
-              <strong>31 March</strong>, after which they are forfeited <Cite n={1} />.
-            </p>
-            <p>
-              If you were ill during your holiday, those days can be reclassified as sick leave and
-              returned to your balance <Cite n={2} />.
+        <div className={styles.app} key={example.tab}>
+          <div className={styles.appSidebar}>
+            <div className={styles.appBrand}>
+              <span className={styles.appMark} />
+              Enterprise RAG
+            </div>
+            <div className={styles.appNew}>
+              <Plus size={12} /> New conversation
+            </div>
+            <p className={styles.appGroup}>Today</p>
+            {EXAMPLES.map((item, index) => (
+              <p
+                key={item.tab}
+                className={`${styles.appItem} ${index === active ? styles.appItemActive : ""}`}
+              >
+                {item.question}
+              </p>
+            ))}
+            <p className={styles.appGroup}>Yesterday</p>
+            <p className={styles.appItem}>Parental leave notice</p>
+            <p className={styles.appItem}>Working from abroad</p>
+          </div>
+          <div className={styles.appChat}>
+            <p className={styles.bubble}>{example.question}</p>
+            <div className={styles.appAnswer}>{example.answer}</div>
+            <div className={styles.appSources}>
+              {example.sources.map((source, index) => (
+                <p key={source.heading}>
+                  <span>{index + 1}</span> {source.document} <em>{source.heading}</em>
+                </p>
+              ))}
+            </div>
+            <div className={styles.appComposer}>
+              Ask about a policy, process or guideline
+              <span>
+                <ArrowUp size={12} />
+              </span>
+            </div>
+          </div>
+          <div className={styles.appPanel}>
+            <p className={styles.appEyebrow}>Source 1</p>
+            <p className={styles.appDoc}>{first?.document}</p>
+            <p className={styles.appHeading}>{first?.heading}</p>
+            <blockquote>{example.passage}</blockquote>
+            <p className={styles.appOpen}>
+              <FileText size={12} /> Open original document
             </p>
           </div>
-          <div className={styles.appSources}>
-            <p>
-              <span>1</span> Annual Leave Policy <em>Carry-Over</em>
-            </p>
-            <p>
-              <span>2</span> Annual Leave Policy <em>Sickness During Leave</em>
-            </p>
-          </div>
-          <div className={styles.appComposer}>
-            Ask about a policy, process or guideline
-            <span>
-              <ArrowUp size={12} />
-            </span>
-          </div>
-        </div>
-        <div className={styles.appPanel}>
-          <p className={styles.appEyebrow}>Source 1</p>
-          <p className={styles.appDoc}>Annual Leave Policy</p>
-          <p className={styles.appHeading}>Carry-Over</p>
-          <blockquote>
-            Employees may carry over a maximum of 5 unused days into the next calendar year.
-            Carried-over days must be used by 31 March of the following year, after which they are
-            forfeited.
-          </blockquote>
-          <p className={styles.appOpen}>
-            <FileText size={12} /> Open original document
-          </p>
         </div>
       </div>
     </div>
@@ -167,18 +278,20 @@ function AppPreview() {
 function CitationExample() {
   return (
     <div className={styles.card}>
-      <p className={styles.bubble}>What is the hotel limit in New York?</p>
+      <p className={styles.bubble}>How much notice do I give before parental leave?</p>
       <p className={styles.cardAnswer}>
-        Hotels are reimbursed up to <strong>275 per night</strong> in London, New York and San
-        Francisco <Cite n={1} />, and up to 200 per night elsewhere <Cite n={1} />.
+        Tell People Operations at least <strong>15 weeks</strong> before the expected week of
+        childbirth or placement <Cite n={1} />. You can move the start date later with{" "}
+        <strong>28 days</strong> of notice <Cite n={1} />.
       </p>
       <div className={styles.quote}>
         <p className={styles.quoteLabel}>
-          <span>1</span> Travel and Expenses Policy · Hotels
+          <span>1</span> Parental Leave Policy · Giving Notice
         </p>
         <p>
-          Hotel costs are reimbursed up to 200 per night. In London, New York and San Francisco the
-          limit is 275 per night.
+          Employees must tell People Operations about their intention to take parental leave at
+          least 15 weeks before the expected week of childbirth or placement. The planned start date
+          can be changed with 28 days of notice.
         </p>
       </div>
     </div>
@@ -286,6 +399,27 @@ export function LandingPage() {
           </dl>
         </section>
 
+        <section className={styles.strip} aria-label="Formats and technology">
+          <div className={`${styles.container} ${styles.stripInner}`}>
+            <div className={styles.stripGroup}>
+              <span className={styles.stripLabel}>Reads</span>
+              {FORMATS.map((item) => (
+                <span key={item} className={styles.chip}>
+                  {item}
+                </span>
+              ))}
+            </div>
+            <div className={styles.stripGroup}>
+              <span className={styles.stripLabel}>Built on</span>
+              {STACK.map((item) => (
+                <span key={item} className={styles.chip}>
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section id="how-it-works" className={styles.section}>
           <div className={styles.container}>
             <p className={styles.eyebrow}>How it works</p>
@@ -304,6 +438,22 @@ export function LandingPage() {
                 </li>
               ))}
             </ol>
+          </div>
+        </section>
+
+        <section className={styles.section}>
+          <div className={styles.container}>
+            <p className={styles.eyebrow}>Use cases</p>
+            <h2 className={styles.title}>Where teams use it</h2>
+            <div className={styles.useCases}>
+              {USE_CASES.map((item) => (
+                <article key={item.team} className={styles.useCase}>
+                  <p className={styles.useCaseTeam}>{item.team}</p>
+                  <p className={styles.useCaseQuestion}>&ldquo;{item.question}&rdquo;</p>
+                  <p className={styles.useCaseBody}>{item.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
         </section>
 
