@@ -3,7 +3,6 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { Spinner } from "@/components/ui/Spinner";
 import { api } from "@/lib/api";
-import { useCurrentUser } from "@/lib/authContext";
 import type { Citation, Message, Session } from "@/lib/types";
 import { useSharedAnswerStream } from "./answerStreamContext";
 import { Composer } from "./Composer";
@@ -20,14 +19,12 @@ const EXAMPLES = [
 ];
 
 function Welcome({ onPick }: { onPick: (question: string) => void }) {
-  const user = useCurrentUser();
   const documents = useQuery({ queryKey: ["documents"], queryFn: api.documents });
   const ready = documents.data?.filter((item) => item.status === "ready").length ?? 0;
-  const firstName = user.full_name.split(" ")[0];
 
   return (
     <div className={styles.welcome}>
-      <h1>What would you like to know, {firstName}?</h1>
+      <h1>What would you like to know?</h1>
       <p className="muted">
         {documents.isPending
           ? "Answers are drawn from your organisation's documents."

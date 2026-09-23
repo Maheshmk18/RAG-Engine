@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { RotateCw, Trash2, Upload, X } from "lucide-react";
+import { Lock, RotateCw, Trash2, Upload, X } from "lucide-react";
 import { useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Badge } from "@/components/ui/Badge";
@@ -9,9 +9,10 @@ import { EmptyState, PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import table from "@/components/ui/Table.module.css";
 import { api, ApiError } from "@/lib/api";
-import { useCurrentUser } from "@/lib/authContext";
+import { useAdminAccess } from "@/lib/admin";
 import { formatBytes, formatDate, timeAgo } from "@/lib/format";
 import type { DocumentItem, DocumentStatus } from "@/lib/types";
+import { AdminKeyDialog } from "./AdminKeyDialog";
 import styles from "./DocumentsPage.module.css";
 
 const ACCEPT = ".pdf,.docx,.md,.markdown,.txt";
@@ -59,7 +60,6 @@ function DocumentRow({ document, canManage }: { document: DocumentItem; canManag
       <td className={table.numeric}>{formatBytes(document.size_bytes)}</td>
       <td>
         <span title={formatDate(document.created_at)}>{timeAgo(document.created_at)}</span>
-        {document.uploaded_by && <span className={table.secondary}>{document.uploaded_by}</span>}
       </td>
       {canManage && (
         <td className={table.actions}>
@@ -87,8 +87,8 @@ function DocumentRow({ document, canManage }: { document: DocumentItem; canManag
 }
 
 export function DocumentsPage() {
-  const user = useCurrentUser();
-  const canManage = user.role === "admin";
+  const { unlocked: canManage } = useAdminAccess();
+  const [unlocking, setUnlocking] = useState(false);
   const queryClient = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
   const [notices, setNotices] = useState<UploadNotice[]>([]);
@@ -154,7 +154,7 @@ export function DocumentsPage() {
             : "The knowledge base the assistant answers from."
         }
         actions={
-          canManage && (
+          canManage ? (
             <>
               <input
                 ref={input}
@@ -175,6 +175,10 @@ export function DocumentsPage() {
                 Upload
               </Button>
             </>
+          ) : (
+            <Button icon={<Lock size={14} />} onClick={() => setUnlocking(true)}>
+              Manage documents
+            </Button>
           )
         }
       />
@@ -207,7 +211,7 @@ export function DocumentsPage() {
         <EmptyState title="No documents yet">
           {canManage
             ? "Upload PDF, Word, Markdown or text files. Drop them anywhere on this page."
-            : "An administrator needs to add documents before questions can be answered."}
+            : "Unlock document management with the admin key to add the first documents."}
         </EmptyState>
       ) : (
         <div className={table.wrap}>
@@ -234,6 +238,8 @@ export function DocumentsPage() {
           </table>
         </div>
       )}
+
+      <AdminKeyDialog open={unlocking} onClose={() => setUnlocking(false)} />
 
       {canManage && (
         <p className={styles.help}>

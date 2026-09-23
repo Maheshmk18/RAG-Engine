@@ -1,22 +1,3 @@
-export type Role = "admin" | "member";
-
-export interface User {
-  id: string;
-  email: string;
-  full_name: string;
-  role: Role;
-  is_active: boolean;
-  created_at: string;
-  last_login_at: string | null;
-}
-
-export interface TokenResponse {
-  access_token: string;
-  token_type: "bearer";
-  expires_in: number;
-  user: User;
-}
-
 export type DocumentStatus = "pending" | "processing" | "ready" | "failed";
 
 export interface DocumentItem {
@@ -29,7 +10,6 @@ export interface DocumentItem {
   error_message: string | null;
   chunk_count: number;
   page_count: number | null;
-  uploaded_by: string | null;
   created_at: string;
   processed_at: string | null;
 }
@@ -99,6 +79,5 @@ export interface ApiErrorBody {
     code: string;
     message: string;
     request_id?: string;
-    details?: { field: string; message: string }[];
   };
 }

@@ -69,50 +69,41 @@
   border-top: 1px solid var(--border);
 }
 
-.account {
+.adminButton {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-2);
   width: 100%;
-  padding: 6px var(--space-2);
+  height: 32px;
+  padding: 0 var(--space-2);
   border: 0;
   border-radius: var(--radius);
   background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
   text-align: left;
 }
 
-.account:hover {
+.adminButton:hover {
   background: var(--surface-hover);
+  color: var(--text);
 }
 
-.avatar {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
+.admin {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+  padding: 0 2px 0 var(--space-2);
+  border-radius: var(--radius);
   background: var(--accent-soft);
   color: var(--accent-text);
-  font-size: var(--text-xs);
-  font-weight: 600;
+  font-size: var(--text-sm);
 }
 
-.accountText {
-  display: grid;
-  min-width: 0;
-}
-
-.accountName {
-  overflow: hidden;
+.adminText {
+  flex: 1;
   font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.accountRole {
-  color: var(--text-muted);
-  font-size: var(--text-xs);
 }
 
 .main {

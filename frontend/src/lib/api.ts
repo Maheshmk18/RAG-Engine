@@ -2,77 +2,71 @@ import type {
   ApiErrorBody,
   DocumentItem,
   Message,
-  Role,
   SearchResponse,
   Session,
   SessionDetail,
-  TokenResponse,
-  User,
 } from "./types";
 
 const API_ROOT = `${(import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "")}/api/v1`;
-const TOKEN_KEY = "amd.token";
+const CLIENT_KEY = "erag.client";
+const ADMIN_KEY = "erag.admin";
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
-  readonly fields: Record<string, string>;
 
   constructor(status: number, body: ApiErrorBody | null) {
     super(body?.error.message ?? "Something went wrong. Please try again.");
     this.status = status;
     this.code = body?.error.code ?? "unknown";
-    this.fields = Object.fromEntries(
-      (body?.error.details ?? []).map((detail) => [detail.field, detail.message]),
-    );
   }
 }
 
-type UnauthorizedListener = () => void;
-let onUnauthorized: UnauthorizedListener = () => {};
+function read(storage: () => Storage, key: string): string | null {
+  try {
+    return storage().getItem(key);
+  } catch {
+    return null;
+  }
+}
 
-export const session = {
-  token: (): string | null => {
-    try {
-      return localStorage.getItem(TOKEN_KEY);
-    } catch {
-      return null;
-    }
-  },
-  store: (token: string) => {
-    try {
-      localStorage.setItem(TOKEN_KEY, token);
-    } catch {
-      return;
-    }
-  },
-  clear: () => {
-    try {
-      localStorage.removeItem(TOKEN_KEY);
-    } catch {
-      return;
-    }
-  },
-  onUnauthorized: (listener: UnauthorizedListener) => {
-    onUnauthorized = listener;
-  },
+function write(storage: () => Storage, key: string, value: string | null) {
+  try {
+    if (value === null) storage().removeItem(key);
+    else storage().setItem(key, value);
+  } catch {
+    return;
+  }
+}
+
+let fallbackClientId: string | null = null;
+
+export function clientId(): string {
+  const stored = read(() => localStorage, CLIENT_KEY);
+  if (stored) return stored;
+  const created = crypto.randomUUID();
+  write(() => localStorage, CLIENT_KEY, created);
+  fallbackClientId ??= created;
+  return read(() => localStorage, CLIENT_KEY) ?? fallbackClientId;
+}
+
+export const adminKey = {
+  get: () => read(() => sessionStorage, ADMIN_KEY),
+  set: (value: string | null) => write(() => sessionStorage, ADMIN_KEY, value),
 };
 
 export async function request(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
-  const token = session.token();
-  if (token) headers.set("Authorization", `Bearer ${token}`);
-  if (init.body && !(init.body instanceof FormData))
+  headers.set("X-Client-Id", clientId());
+  const key = adminKey.get();
+  if (key && !headers.has("X-Admin-Key")) headers.set("X-Admin-Key", key);
+  if (init.body && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
+  }
 
   const response = await fetch(`${API_ROOT}${path}`, { ...init, headers });
   if (response.ok) return response;
-
   const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
-  if (response.status === 401 && token) {
-    session.clear();
-    onUnauthorized();
-  }
   throw new ApiError(response.status, body);
 }
 
@@ -87,23 +81,8 @@ const send = (method: string, body?: unknown): RequestInit => ({
 });
 
 export const api = {
-  login: (email: string, password: string) =>
-    json<TokenResponse>("/auth/login", send("POST", { email, password })),
-  me: () => json<User>("/auth/me"),
-  updateProfile: (fullName: string) =>
-    json<User>("/auth/me", send("PATCH", { full_name: fullName })),
-  changePassword: (currentPassword: string, newPassword: string) =>
-    json<void>(
-      "/auth/me/password",
-      send("POST", { current_password: currentPassword, new_password: newPassword }),
-    ),
-
-  users: () => json<User[]>("/users"),
-  createUser: (data: { email: string; full_name: string; password: string; role: Role }) =>
-    json<User>("/users", send("POST", data)),
-  updateUser: (id: string, data: Partial<Pick<User, "full_name" | "role" | "is_active">>) =>
-    json<User>(`/users/${id}`, send("PATCH", data)),
-  deleteUser: (id: string) => json<void>(`/users/${id}`, send("DELETE")),
+  verifyAdminKey: (key: string) =>
+    json<void>("/admin/verify", { method: "POST", headers: { "X-Admin-Key": key } }),
 
   documents: () => json<DocumentItem[]>("/documents"),
   uploadDocument: (file: File) => {

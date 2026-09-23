@@ -20,7 +20,7 @@ export function Wordmark({ to }: { to?: string }) {
           strokeLinecap="round"
         />
       </svg>
-      Ask My Docs
+      Enterprise RAG
     </>
   );
   return to ? (
