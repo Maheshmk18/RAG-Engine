@@ -1,4 +1,5 @@
 import logging
+import threading
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,6 +13,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.session import create_db_engine, create_session_factory
+from app.runtime import build_embedder, build_pipeline, build_worker
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +25,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("service starting", extra={"environment": settings.environment})
+        stop = threading.Event()
+        worker_thread: threading.Thread | None = None
+        if settings.embedded_worker:
+            worker = build_worker(settings, app.state.session_factory, app.state.pipeline)
+            worker_thread = threading.Thread(target=worker.run, args=(stop,), daemon=True)
+            worker_thread.start()
         yield
+        stop.set()
+        if worker_thread is not None:
+            worker_thread.join(timeout=30)
         app.state.engine.dispose()
         logger.info("service stopped")
 
@@ -40,6 +51,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.engine = engine
     app.state.session_factory = create_session_factory(engine)
+    app.state.embedder = build_embedder(settings)
+    app.state.pipeline = build_pipeline(settings, app.state.embedder)
     app.state.login_limiter = SlidingWindowRateLimiter(
         settings.login_rate_limit, settings.login_rate_window_seconds
     )

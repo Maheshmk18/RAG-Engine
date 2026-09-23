@@ -19,15 +19,29 @@ services:
 
   api:
     build: ./backend
-    environment:
+    environment: &backend-env
       ENVIRONMENT: development
       DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/ragengine
       CORS_ORIGINS: http://localhost:5173
+      MODEL_CACHE_DIR: /srv/models
     ports:
       - "8000:8000"
+    volumes:
+      - models:/srv/models
     depends_on:
       db:
         condition: service_healthy
 
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-env
+    volumes:
+      - models:/srv/models
+    depends_on:
+      api:
+        condition: service_started
+
 volumes:
   pgdata:
+  models:

@@ -3,20 +3,25 @@ FROM python:3.11-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MODEL_CACHE_DIR=/srv/models
 
 WORKDIR /srv
 
-RUN useradd --create-home --uid 10001 app
+RUN useradd --create-home --uid 10001 app \
+    && mkdir -p /srv/models \
+    && chown app /srv/models
 
 COPY pyproject.toml ./
 COPY app ./app
 RUN pip install .
 
+USER app
+
+RUN python -c "from app.core.config import Settings; from app.runtime import build_embedder; build_embedder(Settings()).model"
+
 COPY alembic.ini ./
 COPY migrations ./migrations
-
-USER app
 
 EXPOSE 8000
 

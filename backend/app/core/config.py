@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     login_rate_limit: int = 10
     login_rate_window_seconds: int = 300
 
+    max_upload_mb: int = 20
+    embedding_model: str = "BAAI/bge-small-en-v1.5"
+    model_cache_dir: str | None = None
+    chunk_max_words: int = 180
+    chunk_overlap_words: int = 30
+    embedded_worker: bool = False
+    worker_poll_seconds: float = 2.0
+    worker_max_attempts: int = 3
+    worker_stale_after_seconds: int = 600
+
     @field_validator("database_url")
     @classmethod
     def use_psycopg_driver(cls, value: str) -> str:
@@ -54,6 +64,10 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
+
+    @property
+    def max_upload_bytes(self) -> int:
+        return self.max_upload_mb * 1024 * 1024
 
 
 @lru_cache(maxsize=1)
