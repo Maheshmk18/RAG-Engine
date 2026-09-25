@@ -29,9 +29,10 @@ class Completion:
 
 
 class LLMUnavailableError(Exception):
-    def __init__(self, message: str, *, reason: str) -> None:
+    def __init__(self, message: str, *, reason: str, detail: str | None = None) -> None:
         super().__init__(message)
         self.reason = reason
+        self.detail = detail
 
 
 class LLMClient(Protocol):
@@ -44,25 +45,57 @@ class LLMClient(Protocol):
     ) -> Iterator[str | Completion]: ...
 
 
+REASONING_MODEL_PREFIX = "openai/gpt-oss"
+
+ReasoningEffort = Literal["low", "medium", "high"]
+
+
 def provider_messages(messages: list[ChatMessage]) -> list[ChatCompletionMessageParam]:
     return cast(list[ChatCompletionMessageParam], messages)
 
 
 def translate_error(exc: groq.GroqError) -> LLMUnavailableError:
+    detail = str(exc)[:300]
     if isinstance(exc, groq.RateLimitError):
-        return LLMUnavailableError("The language model is rate limited", reason="rate_limited")
+        return LLMUnavailableError(
+            "The language model is rate limited", reason="rate_limited", detail=detail
+        )
     if isinstance(exc, groq.AuthenticationError | groq.PermissionDeniedError):
-        return LLMUnavailableError("The language model rejected the API key", reason="auth")
+        return LLMUnavailableError(
+            "The language model rejected the API key", reason="auth", detail=detail
+        )
+    if isinstance(exc, groq.NotFoundError):
+        return LLMUnavailableError(
+            "The configured model is not available to this API key",
+            reason="model_not_found",
+            detail=detail,
+        )
     if isinstance(exc, groq.APITimeoutError):
-        return LLMUnavailableError("The language model timed out", reason="timeout")
+        return LLMUnavailableError("The language model timed out", reason="timeout", detail=detail)
     if isinstance(exc, groq.APIConnectionError):
-        return LLMUnavailableError("The language model is unreachable", reason="network")
-    return LLMUnavailableError("The language model returned an error", reason="provider_error")
+        return LLMUnavailableError(
+            "The language model is unreachable", reason="network", detail=detail
+        )
+    return LLMUnavailableError(
+        "The language model returned an error", reason="provider_error", detail=detail
+    )
 
 
 class GroqClient:
-    def __init__(self, api_key: str, timeout: float, max_retries: int) -> None:
+    def __init__(
+        self,
+        api_key: str,
+        timeout: float,
+        max_retries: int,
+        reasoning_effort: ReasoningEffort | None = None,
+    ) -> None:
         self.client = groq.Groq(api_key=api_key, timeout=timeout, max_retries=max_retries)
+        self.reasoning_effort = reasoning_effort
+
+    def effort_for(self, model: str) -> ReasoningEffort | groq.Omit:
+        if self.reasoning_effort and model.startswith(REASONING_MODEL_PREFIX):
+            return self.reasoning_effort
+        return groq.omit
 
     def complete(
         self, messages: list[ChatMessage], *, model: str, temperature: float, max_tokens: int
@@ -73,6 +106,7 @@ class GroqClient:
                 messages=provider_messages(messages),
                 temperature=temperature,
                 max_tokens=max_tokens,
+                reasoning_effort=self.effort_for(model),
             )
         except groq.GroqError as exc:
             raise translate_error(exc) from exc
@@ -98,6 +132,7 @@ class GroqClient:
                 temperature=temperature,
                 max_tokens=max_tokens,
                 stream=True,
+                reasoning_effort=self.effort_for(model),
             )
             for chunk in chunks:
                 served_model = chunk.model or served_model

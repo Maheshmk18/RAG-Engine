@@ -65,6 +65,7 @@ def build_llm(settings: Settings) -> LLMClient:
         settings.groq_api_key.get_secret_value(),
         timeout=settings.llm_timeout_seconds,
         max_retries=settings.llm_max_retries,
+        reasoning_effort=settings.llm_reasoning_effort,
     )
 
 

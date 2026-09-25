@@ -239,10 +239,12 @@ class AnswerService:
                     rewrite_messages(recent, question),
                     model=self.config.rewrite_model,
                     temperature=0.0,
-                    max_tokens=200,
+                    max_tokens=400,
                 )
             except LLMUnavailableError as exc:
-                logger.warning("question rewrite failed", extra={"reason": exc.reason})
+                logger.warning(
+                    "question rewrite failed", extra={"reason": exc.reason, "detail": exc.detail}
+                )
                 span["fallback"] = True
                 return question
         calls.append(LLMCall.from_completion("rewrite", completion))

@@ -39,7 +39,7 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--thresholds", type=Path, default=HERE / "thresholds.toml")
     parser.add_argument("--baseline", type=Path, default=HERE / "baseline.json")
     parser.add_argument("--output", type=Path, default=HERE / "reports" / "latest.json")
-    parser.add_argument("--judge-model", default="openai/gpt-oss-120b")
+    parser.add_argument("--judge-model", default="qwen/qwen3.8-27b")
     parser.add_argument("--update-baseline", action="store_true")
     parser.add_argument("--limit", type=int)
     return parser.parse_args(argv)
@@ -204,7 +204,12 @@ def main(argv: list[str] | None = None) -> int:
         if settings.groq_api_key is None:
             progress("GROQ_API_KEY is required for the full suite")
             return 2
-        llm = GroqClient(settings.groq_api_key.get_secret_value(), timeout=60, max_retries=6)
+        llm = GroqClient(
+            settings.groq_api_key.get_secret_value(),
+            timeout=60,
+            max_retries=6,
+            reasoning_effort=settings.llm_reasoning_effort,
+        )
         service = AnswerService(retriever, llm, answer_config(settings))
         generation, latency = evaluate_generation(
             cases, service, FaithfulnessJudge(llm, args.judge_model), rows

@@ -113,7 +113,9 @@ def answer_events(
                     },
                 )
     except LLMUnavailableError as exc:
-        logger.error("answer generation unavailable", extra={"reason": exc.reason})
+        logger.error(
+            "answer generation unavailable", extra={"reason": exc.reason, "detail": exc.detail}
+        )
         failed = chat_service.add_failure(db, session_id, UNAVAILABLE_MESSAGE, exc.reason)
         yield sse("error", message_payload(failed))
     except Exception:

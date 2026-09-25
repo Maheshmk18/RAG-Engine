@@ -46,8 +46,9 @@ class Settings(BaseSettings):
     retrieval_rrf_k: int = 60
 
     groq_api_key: SecretStr | None = None
-    answer_model: str = "llama-3.3-70b-versatile"
-    rewrite_model: str = "llama-3.1-8b-instant"
+    answer_model: str = "openai/gpt-oss-120b"
+    rewrite_model: str = "openai/gpt-oss-20b"
+    llm_reasoning_effort: Literal["low", "medium", "high"] | None = "low"
     llm_temperature: float = 0.1
     llm_max_tokens: int = 800
     llm_timeout_seconds: float = 30.0
