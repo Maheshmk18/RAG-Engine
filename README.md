@@ -31,13 +31,13 @@ flowchart LR
     end
 
     subgraph Answering
-        A[Question] --> RW[Rewrite follow-ups<br/>llama-3.1-8b]
+        A[Question] --> RW[Rewrite follow-ups<br/>GPT-OSS 20B on Groq]
         RW --> D[Vector search<br/>Atlas or in-process]
         RW --> B[BM25]
         D --> F[Reciprocal rank fusion]
         B --> F
         F --> R[Cross-encoder rerank<br/>MiniLM]
-        R --> G[Answer with numbered sources<br/>llama-3.3-70b on Groq]
+        R --> G[Answer with numbered sources<br/>GPT-OSS 120B on Groq]
         G --> V{Citation check}
         V -- valid --> S[Stream to browser]
         V -- invalid --> RP[One repair attempt]
@@ -86,19 +86,26 @@ Answer-quality metrics are produced by the full suite, which needs a Groq API ke
 
 ## Running it locally
 
-You need Python 3.11+, Node 20+, and MongoDB 7 or later: Docker, a local install, or a free MongoDB Atlas cluster.
+For the quickest local setup on Windows, use Docker Desktop with Compose and Node.js 20+. You don't need to install Python or MongoDB on your computer for this option. The native backend setup below needs Python 3.11+ and a MongoDB 7+ server.
 
-**With Docker Compose**
+**With Docker Compose (Windows PowerShell)**
 
-```bash
-export ADMIN_API_KEY=choose-a-long-random-key
-export GROQ_API_KEY=your-groq-key
-docker compose up --build
-docker compose cp knowledge_base api:/srv/knowledge_base
+If Docker Desktop isn't installed, [install it for Windows](https://docs.docker.com/desktop/setup/install/windows-install/) and start it. Wait until Docker Desktop says the engine is running. From the repository root, set a local admin key. If you have a Groq key and want generated chat answers, uncomment the last line and replace the value with your real key; otherwise leave it commented.
+
+```powershell
+$env:ADMIN_API_KEY = "local-admin-key-change-me-123"
+# $env:GROQ_API_KEY = "your-real-groq-key"
+```
+
+Then start MongoDB, the API and the background worker, and load the demo handbook:
+
+```powershell
+docker compose up --build -d
+docker compose cp .\knowledge_base api:/srv/knowledge_base
 docker compose exec api python -m app.cli ingest /srv/knowledge_base
 ```
 
-That starts MongoDB, the API on port 8000 and the ingestion worker, then queues the handbook for indexing.
+The first build downloads dependencies and retrieval models, so it can take a while. The handbook is queued for indexing by the worker.
 
 **Backend without Docker**
 
@@ -115,13 +122,15 @@ In `.env`, set `MONGODB_URL`, an `ADMIN_API_KEY` of at least 16 characters, and 
 
 **Frontend**
 
-```bash
-cd frontend
-npm install
-npm run dev
+```powershell
+Set-Location frontend
+npm.cmd ci
+npm.cmd run dev
 ```
 
-Open http://localhost:5173. The landing page links straight to the assistant. To upload documents, open **Documents**, choose **Manage documents** and enter the admin key. Without `GROQ_API_KEY`, retrieval and the search inspector still work, and chat reports that the model is unavailable.
+Keep the frontend command running, then open http://localhost:5173. The landing page links straight to the assistant. To upload documents, open **Documents**, choose **Manage documents** and enter the admin key you set above. Without `GROQ_API_KEY`, retrieval and the search inspector still work, and chat reports that the model is unavailable. In Bash, use `cd frontend`, `npm ci` and `npm run dev` instead.
+
+To stop the frontend, press **Ctrl+C** in its terminal. To stop the backend services, run `docker compose down` from the repository root. This keeps the MongoDB volume and its data.
 
 ## Testing and evaluation
 
@@ -155,38 +164,71 @@ The full answer-quality evaluation runs nightly, on demand and on pushes to `mai
 
 ## Deployment
 
-The backend runs on Railway as two services built from the same image, the frontend runs on Vercel, and the database is MongoDB Atlas.
+The backend runs on Railway as an API and an ingestion worker built from the same Dockerfile, the frontend runs on Vercel, and the database is MongoDB Atlas. Railway's per-service `railway.toml` configuration is deprecated for new services, so configure these settings in each Railway service's dashboard.
 
 **MongoDB Atlas**
 
-1. Create a cluster. The free M0 tier supports Atlas Vector Search.
-2. Create a database user and allow access from Railway's outbound addresses, or from anywhere while testing.
-3. Copy the `mongodb+srv://` connection string.
+1. Create an Atlas project and cluster in a region near the Railway services. A free cluster works for a demo; choose a production tier with the capacity and backup options you need for real data.
+2. Under **Database Access**, create a database user with the `readWrite` role scoped to `enterprise_rag`. The app creates its collections and regular indexes on startup, and `readWrite` allows it to create the Atlas Vector Search index.
+3. Under **Connect**, choose **Drivers** and copy the `mongodb+srv://` connection string. URL-encode special characters in the username or password. Set this as `MONGODB_URL`; set the database name separately as `MONGODB_DATABASE=enterprise_rag`.
+4. Atlas accepts connections only from addresses in the project's IP access list. After creating the Railway API and worker services, enable **Static Outbound IPs** for both services and add every address Railway shows to Atlas **Network Access**. Railway currently requires the Pro plan for static outbound IPs. For a temporary demo only, `0.0.0.0/0` allows all IPv4 addresses; use a strong unique database password and remove that entry after testing. Don't use that rule for confidential documents.
 
-With `VECTOR_SEARCH=atlas`, the service creates the `chunk_embeddings` vector index on startup.
+With `VECTOR_SEARCH=atlas`, the app requests the `chunk_embeddings` vector index on startup. Atlas builds the index asynchronously, so it may take a short time before vector queries are ready.
 
 **Railway**
 
-1. Create an **api** service from this repository with root directory `backend`. It picks up [`railway.toml`](backend/railway.toml) and uses `/api/v1/health/ready` as its health check.
-2. Create a **worker** service from the same repository and root directory, and set its config file path to `backend/railway.worker.toml`.
-3. Set these variables on both services:
+1. Create an **api** service from this repository and select the branch you intend to deploy. Set its root directory to `/backend`; Railway will build the `backend/Dockerfile`. Choose the same region as the Atlas cluster.
+2. In the API service's Deploy settings, set the healthcheck path to `/api/v1/health/ready`. Generate a public domain for the API.
+3. Create a **worker** service from the same repository and branch, with root directory `/backend`. Set its custom start command to `python -m app.worker`. The worker needs no public domain.
+4. In each service's **Settings > Networking**, enable Static Outbound IPs and add the allocated addresses to Atlas as described above.
+5. In each service's **Variables > Raw Editor**, add the shared variables below. Replace the MongoDB URL placeholder with the connection string from Atlas.
 
-   | Variable | Value |
-   | --- | --- |
-   | `ENVIRONMENT` | `production` |
-   | `MONGODB_URL` | your Atlas connection string |
-   | `MONGODB_DATABASE` | `enterprise_rag` |
-   | `VECTOR_SEARCH` | `atlas` |
-   | `ADMIN_API_KEY` | a long random string |
-   | `GROQ_API_KEY` | your key |
-   | `CORS_ORIGINS` | your Vercel domain, for example `https://enterprise-rag.vercel.app` |
-   | `LOG_JSON` | `true` |
+   ```dotenv
+   ENVIRONMENT=production
+   LOG_LEVEL=INFO
+   LOG_JSON=true
+   MONGODB_URL=mongodb+srv://<db-user>:<url-encoded-password>@<cluster-host>/?retryWrites=true&w=majority&appName=enterprise-rag
+   MONGODB_DATABASE=enterprise_rag
+   VECTOR_SEARCH=atlas
+   ATLAS_VECTOR_INDEX=chunk_embeddings
+   ```
 
-To run on a single service, skip the worker and set `EMBEDDED_WORKER=true` on the API.
+6. Add these variables to the **api** service only. Generate a unique admin key with at least 16 characters. Replace the CORS placeholder with the Vercel production origin after the frontend has a domain.
+
+   ```dotenv
+   ADMIN_API_KEY=<long-random-secret>
+   GROQ_API_KEY=<your-groq-api-key>
+   CORS_ORIGINS=https://<your-vercel-production-domain>
+   ```
+
+The worker doesn't need `ADMIN_API_KEY`, `GROQ_API_KEY`, or `CORS_ORIGINS`. All other backend settings have defaults; [`backend/.env.example`](backend/.env.example) now lists every supported setting. Add only the optional overrides you need.
+
+`CORS_ORIGINS` can be updated after the first Vercel deployment reveals its production domain. Railway redeploys the API when its variables change. The app creates the Atlas vector index on startup; Atlas may take a short time to finish building it.
 
 **Vercel**
 
-Import the repository with root directory `frontend` and set `VITE_API_URL` to the Railway API's public URL. [`frontend/vercel.json`](frontend/vercel.json) handles SPA routing, asset caching and security headers.
+Import the repository with root directory `frontend` and set the production environment variable `VITE_API_URL` to the Railway API's public origin, without a trailing slash or `/api/v1`. Redeploy after changing it because Vite embeds the value in the frontend build. [`frontend/vercel.json`](frontend/vercel.json) handles SPA routing, asset caching and security headers.
+
+**GitHub Actions deployment**
+
+[`deploy.yml`](.github/workflows/deploy.yml) runs after the existing CI workflow succeeds on a push to `main`. It deploys the `api` and `worker` services to Railway, then builds and deploys the frontend to Vercel. Pull requests and pushes to other branches do not deploy production.
+
+1. In GitHub, open **Settings > Secrets and variables > Actions > New repository secret** and add `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`. Create a Railway project token for this project; find the project ID in the Railway project settings. Create a Vercel token and get the organization and project IDs from the Vercel project settings or `.vercel/project.json` after linking the frontend locally. Keep the token values private.
+2. Make sure Railway has production services named `api` and `worker` in an environment named `production`, with the runtime variables from the Railway section above. Add `MONGODB_URL` to the Railway API and worker variables; the local `backend/.env` file does not configure Railway. Keep database and API keys in Railway's Variables, not in GitHub Actions secrets.
+3. Set `VITE_API_URL` in the Vercel project's production environment to the Railway API public origin. The Vercel CLI pulls this setting during the production build.
+4. Turn off automatic Git deployments in Vercel and Railway if enabled, so one push does not create duplicate deployments. Push or merge to `main`; GitHub first runs CI, then this workflow deploys only if CI succeeds.
+
+The MongoDB URL is present in the local `backend/.env` and that file is ignored by Git. Add the same Atlas connection string directly to both Railway services' Variables when deploying. Never commit `.env` files or paste connection strings into workflow files.
+
+**Load the demo handbook**
+
+After the API, worker and frontend are live and CORS is configured, open **Documents** in the app, choose **Manage documents**, enter the `ADMIN_API_KEY`, and upload the files from [`knowledge_base/`](knowledge_base). The worker indexes each uploaded file. Check the document statuses before trying questions.
+
+**Access model**
+
+The chat, document reading and search inspector are public; only document changes require the admin key. Put the deployment behind a VPN or single sign-on proxy before uploading confidential internal documents.
+
+For a single Railway backend service, omit the worker service and set `EMBEDDED_WORKER=true` on the API.
 
 ## Configuration
 
@@ -195,11 +237,14 @@ All backend settings are environment variables, listed with defaults in [`backen
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `MONGODB_URL` | `mongodb://localhost:27017` | MongoDB connection string |
+| `MONGODB_DATABASE` | `enterprise_rag` | Database name |
 | `VECTOR_SEARCH` | `local` | `atlas` for Atlas Vector Search, `local` for in-process search |
+| `ENVIRONMENT` | `development` | Runtime environment; use `production` when deployed |
 | `ADMIN_API_KEY` | unset | Unlocks uploading and deleting documents; management is disabled while unset |
 | `GROQ_API_KEY` | unset | Enables answer generation |
-| `ANSWER_MODEL` | `llama-3.3-70b-versatile` | Groq model that writes answers |
-| `REWRITE_MODEL` | `llama-3.1-8b-instant` | Groq model that rewrites follow-up questions |
+| `ANSWER_MODEL` | `openai/gpt-oss-120b` | Groq model that writes answers |
+| `REWRITE_MODEL` | `openai/gpt-oss-20b` | Groq model that rewrites follow-up questions |
+| `LLM_REASONING_EFFORT` | `low` | Reasoning effort for the Groq models |
 | `RETRIEVAL_TOP_K` | `5` | Passages sent to the model |
 | `RETRIEVAL_RERANK_CANDIDATES` | `12` | Fused candidates rescored by the cross-encoder |
 | `RETRIEVAL_MIN_RELEVANCE` | `0.00005` | Below this best score a question is treated as off-topic |
