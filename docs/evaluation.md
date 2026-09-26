@@ -26,7 +26,7 @@ For each answerable question, the runner compares four rankings using the top fi
 - **MRR:** reciprocal rank of the first expected section.
 - **nDCG @5:** rank-weighted score with binary relevance, counting a section once.
 
-For unanswerable questions, it records how often retrieval returns no passages, allowing the app to decline before calling a model. The corpus is built in memory by the production extraction, chunking and embedding pipeline. This suite needs neither MongoDB nor an API key, so CI can run it on pull requests.
+For unanswerable questions, it records how often retrieval returns no passages, allowing the app to decline before calling a model. The corpus is built in memory by the production extraction, chunking and embedding pipeline. It needs no MongoDB, but it calls Pinecone's hosted embedding API and requires `PINECONE_API_KEY`.
 
 ## Full answer suite
 

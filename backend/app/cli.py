@@ -10,7 +10,7 @@ from app.core.errors import AppError
 from app.core.logging import configure_logging
 from app.db.mongo import create_client, ensure_indexes
 from app.ingestion.extract import detect_kind
-from app.runtime import build_embedder, build_pipeline
+from app.runtime import build_chunk_store, build_embedder, build_pipeline
 from app.services import documents as document_service
 
 
@@ -26,7 +26,10 @@ def init_db(db: Database, _: argparse.Namespace) -> None:
 
 def ingest(db: Database, args: argparse.Namespace) -> None:
     settings = get_settings()
-    pipeline = build_pipeline(settings, build_embedder(settings)) if args.process else None
+    pipeline = None
+    if args.process:
+        vector_store = build_chunk_store(settings, db)
+        pipeline = build_pipeline(settings, build_embedder(settings), vector_store)
     for path in iter_supported_files(args.paths):
         try:
             document = document_service.create_document(db, path.name, path.read_bytes(), settings)
@@ -66,7 +69,7 @@ def main(argv: list[str] | None = None) -> int:
     client = create_client(settings)
     try:
         db = client[settings.mongodb_database]
-        ensure_indexes(db, settings)
+        ensure_indexes(db)
         handler(db, args)
     except AppError as exc:
         print(exc.message, file=sys.stderr)

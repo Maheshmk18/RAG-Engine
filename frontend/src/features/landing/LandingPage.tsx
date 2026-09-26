@@ -16,7 +16,7 @@ const STAGES = [
   {
     name: "Ingest",
     body: "PDF, Word, Markdown and text files are split along their own headings, so a passage never mixes two policies.",
-    tags: ["GridFS storage", "Heading-aware chunks", "bge-small embeddings"],
+    tags: ["GridFS storage", "Heading-aware chunks", "Pinecone embeddings"],
   },
   {
     name: "Retrieve",
@@ -48,16 +48,16 @@ const OPERATIONS = [
     body: "Anyone who can reach the assistant can ask. Each browser keeps its own private conversation history.",
   },
   {
-    title: "Documents behind an admin key",
-    body: "Reading is open; uploading, re-indexing and deleting documents require the key set on the server.",
+    title: "Open document management",
+    body: "Anyone who can reach the app can upload, re-index, and delete documents from the knowledge base.",
   },
   {
-    title: "Your own MongoDB",
-    body: "Documents, passages, conversations and feedback live in one MongoDB database, with Atlas Vector Search when you use Atlas.",
+    title: "MongoDB plus Pinecone",
+    body: "MongoDB stores documents and conversations; Pinecone stores passage vectors and powers semantic search.",
   },
   {
-    title: "Search models run in-house",
-    body: "Embedding and ranking happen inside the service. Only the question and the chosen passages go to the language model.",
+    title: "Grounded retrieval",
+    body: "The backend creates embeddings, searches Pinecone, then reranks matching passages before sending context to the language model.",
   },
   {
     title: "Rate limits and request IDs",
@@ -93,7 +93,7 @@ const USE_CASES = [
 ];
 
 const FORMATS = ["PDF", "Word", "Markdown", "Plain text"];
-const STACK = ["MongoDB", "Groq", "FastAPI", "React"];
+const STACK = ["MongoDB", "Pinecone", "Groq", "FastAPI", "React"];
 
 const QUESTIONS = [
   {
@@ -102,7 +102,7 @@ const QUESTIONS = [
   },
   {
     q: "Where is our data stored?",
-    a: "In the MongoDB database you point it at. The original files are kept in GridFS next to the extracted passages, so nothing is written to local disk.",
+    a: "MongoDB stores original files, passage text and conversations. Pinecone stores and searches the passage embeddings.",
   },
   {
     q: "What happens when the answer isn't in the documents?",
@@ -114,7 +114,7 @@ const QUESTIONS = [
   },
   {
     q: "How do we add our own documents?",
-    a: "Choose Upload documents in the sidebar, enter the admin key configured on the server, then drop your files in. They are indexed in the background and can be asked about within seconds.",
+    a: "Choose Upload documents in the sidebar, then drop your files in. They are indexed in the background and can be asked about within seconds.",
   },
 ];
 

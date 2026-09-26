@@ -3,7 +3,6 @@ import math
 import re
 from collections.abc import Iterator, Sequence
 
-from app.db.mongo import EMBEDDING_DIMENSIONS
 from app.generation.llm import ChatMessage, Completion, Usage
 from app.retrieval.bm25 import tokenize
 
@@ -11,7 +10,7 @@ TOKEN = re.compile(r"[a-z0-9]+")
 
 
 class HashingEmbedder:
-    dimensions = EMBEDDING_DIMENSIONS
+    dimensions = 384
 
     def _vector(self, text: str) -> list[float]:
         vector = [0.0] * self.dimensions

@@ -27,9 +27,9 @@ PASSAGES = [
 
 
 def build_service(llm: ScriptedLLM, coverage: float = 1.0) -> AnswerService:
-    document_id = str(uuid.uuid4())
+    document_ids = {title: str(uuid.uuid4()) for title, _, _ in PASSAGES}
     records = [
-        ChunkRecord(str(uuid.uuid4()), document_id, title, heading, None, text)
+        ChunkRecord(str(uuid.uuid4()), document_ids[title], title, heading, None, text)
         for title, heading, text in PASSAGES
     ]
     embedder = HashingEmbedder()
@@ -72,6 +72,34 @@ def test_question_without_sources_abstains_without_calling_the_model() -> None:
     assert answer.status is AnswerStatus.ABSTAINED
     assert answer.abstain_reason is AbstainReason.NO_RELEVANT_SOURCES
     assert answer.text == NO_ANSWER_MESSAGE
+    assert llm.calls == []
+
+
+def test_greeting_gets_a_friendly_answer_without_searching_documents() -> None:
+    llm = ScriptedLLM()
+    answer = build_service(llm).answer("Hey!!")
+
+    assert answer.status is AnswerStatus.ANSWERED
+    assert answer.text.startswith("Hi!")
+    assert answer.citations == []
+    assert llm.calls == []
+
+
+def test_how_are_you_gets_a_friendly_answer_without_searching_documents() -> None:
+    llm = ScriptedLLM()
+    answer = build_service(llm).answer("How are you?")
+
+    assert answer.status is AnswerStatus.ANSWERED
+    assert "doing well" in answer.text
+    assert llm.calls == []
+
+
+def test_document_count_question_reports_indexed_documents() -> None:
+    llm = ScriptedLLM()
+    answer = build_service(llm).answer("How many documents you have!!")
+
+    assert answer.status is AnswerStatus.ANSWERED
+    assert answer.text == "I currently have 2 documents indexed and ready to search."
     assert llm.calls == []
 
 

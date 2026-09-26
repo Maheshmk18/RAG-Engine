@@ -8,7 +8,7 @@ from pymongo.database import Database
 from app.core.config import Settings
 from app.ingestion.pipeline import IngestionPipeline
 from app.retrieval.retriever import HybridRetriever, RetrievalConfig
-from app.retrieval.store import MongoChunkStore
+from app.retrieval.store import PineconeChunkStore
 from app.services import documents as document_service
 from tests.fakes import HashingEmbedder, OverlapReranker
 
@@ -24,15 +24,17 @@ Connect through the company VPN before using internal systems.
 """
 
 
-def index(db: Database, settings: Settings, name: str, data: bytes) -> None:
+def index(
+    db: Database, settings: Settings, store: PineconeChunkStore, name: str, data: bytes
+) -> None:
     document = document_service.create_document(db, name, data, settings)
-    IngestionPipeline(HashingEmbedder(), max_words=100, overlap_words=10).process(db, document.id)
+    IngestionPipeline(HashingEmbedder(), 100, 10, store).process(db, document.id)
 
 
 @pytest.fixture
-def store(app: FastAPI, db: Database, settings: Settings) -> MongoChunkStore:
-    index(db, settings, "handbook.md", HANDBOOK)
-    store = MongoChunkStore(app.state.database)
+def store(app: FastAPI, db: Database, settings: Settings) -> PineconeChunkStore:
+    index(db, settings, app.state.chunk_store, "handbook.md", HANDBOOK)
+    store: PineconeChunkStore = app.state.chunk_store
     app.state.retriever = HybridRetriever(
         store, HashingEmbedder(), OverlapReranker(), RetrievalConfig(min_relevance=0.3)
     )
@@ -46,7 +48,7 @@ def search(client: TestClient, query: str) -> dict[str, Any]:
     return body
 
 
-def test_search_returns_scored_passages(client: TestClient, store: MongoChunkStore) -> None:
+def test_search_returns_scored_passages(client: TestClient, store: PineconeChunkStore) -> None:
     body = search(client, "VPN internal")
     top = body["passages"][0]
     assert top["heading"] == "Remote Access"
@@ -57,16 +59,16 @@ def test_search_returns_scored_passages(client: TestClient, store: MongoChunkSto
 
 
 def test_indexes_follow_corpus_changes(
-    client: TestClient, store: MongoChunkStore, db: Database, settings: Settings
+    client: TestClient, store: PineconeChunkStore, db: Database, settings: Settings
 ) -> None:
     assert search(client, "sabbatical eligibility")["passages"] == []
     extra = b"# Sabbatical\n\n## Eligibility\n\nSabbatical eligibility starts after seven years."
-    index(db, settings, "sabbatical.md", extra)
+    index(db, settings, store, "sabbatical.md", extra)
     passages = search(client, "sabbatical eligibility")["passages"]
     assert passages[0]["document_title"] == "Sabbatical"
 
 
-def test_local_vector_search_ranks_by_similarity(store: MongoChunkStore) -> None:
+def test_pinecone_vector_search_ranks_by_similarity(store: PineconeChunkStore) -> None:
     ids = store.vector_search(HashingEmbedder().embed_query("hotels night London"), limit=2)
     records = store.get_many(ids)
     assert records[ids[0]].heading == "Hotels"

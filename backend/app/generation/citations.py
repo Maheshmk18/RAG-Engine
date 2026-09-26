@@ -1,8 +1,8 @@
 import re
 from dataclasses import dataclass, field
 
-CITATION_GROUP = re.compile(r"\[(\d+(?:\s*,\s*\d+)*)\]")
-SENTENCE_END = re.compile(r"([.!?](?:\s*\[\d+(?:\s*,\s*\d+)*\])*)\s+(?=[A-Z0-9(\"*])")
+CITATION_GROUP = re.compile(r"[\[【](\d+(?:\s*,\s*\d+)*)[\]】]")
+SENTENCE_END = re.compile(r"([.!?](?:\s*[\[【]\d+(?:\s*,\s*\d+)*[\]】])*)\s+(?=[A-Z0-9(\"*])")
 LIST_MARKER = re.compile(r"^(?:[-*+\u2022]|\d+[.)])\s+")
 MIN_CLAIM_WORDS = 4
 

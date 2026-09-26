@@ -1,10 +1,8 @@
 from functools import lru_cache
 from typing import Annotated, Literal
 
-from pydantic import SecretStr, field_validator, model_validator
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
-
-MIN_ADMIN_KEY_LENGTH = 16
 
 
 class Settings(BaseSettings):
@@ -18,16 +16,17 @@ class Settings(BaseSettings):
 
     mongodb_url: str = "mongodb://localhost:27017"
     mongodb_database: str = "enterprise_rag"
-    vector_search: Literal["local", "atlas"] = "local"
-    atlas_vector_index: str = "chunk_embeddings"
+    pinecone_api_key: SecretStr | None = None
+    pinecone_index_name: str = "enterprise-rag"
+    pinecone_namespace: str = "enterprise-rag"
+    pinecone_embedding_model: str = "multilingual-e5-large"
+    pinecone_embedding_dimensions: int = 1024
 
-    admin_api_key: SecretStr | None = None
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     chat_rate_limit_per_minute: int = 20
     upload_rate_limit_per_hour: int = 30
 
     max_upload_mb: int = 20
-    embedding_model: str = "BAAI/bge-small-en-v1.5"
     model_cache_dir: str | None = None
     chunk_max_words: int = 180
     chunk_overlap_words: int = 30
@@ -64,17 +63,10 @@ class Settings(BaseSettings):
             return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
         return value
 
-    @field_validator("admin_api_key", "groq_api_key", mode="before")
+    @field_validator("groq_api_key", "pinecone_api_key", mode="before")
     @classmethod
     def blank_is_unset(cls, value: object) -> object:
         return None if isinstance(value, str) and not value.strip() else value
-
-    @model_validator(mode="after")
-    def require_strong_admin_key(self) -> "Settings":
-        key = self.admin_api_key.get_secret_value() if self.admin_api_key else ""
-        if key and len(key) < MIN_ADMIN_KEY_LENGTH:
-            raise ValueError(f"ADMIN_API_KEY must be at least {MIN_ADMIN_KEY_LENGTH} characters")
-        return self
 
     @property
     def is_production(self) -> bool:

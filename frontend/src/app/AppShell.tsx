@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { FileText, Lock, Microscope, PanelLeft, Plus, ShieldCheck, Upload } from "lucide-react";
+import { FileText, Microscope, PanelLeft, Plus, Upload } from "lucide-react";
 import { Suspense, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { Button, IconButton } from "@/components/ui/Button";
@@ -7,37 +7,9 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Wordmark } from "@/components/Wordmark";
 import { AnswerStreamProvider } from "@/features/chat/AnswerStreamProvider";
 import { ConversationList } from "@/features/chat/ConversationList";
-import { AdminKeyDialog } from "@/features/documents/AdminKeyDialog";
 import { UploadDialog } from "@/features/documents/UploadDialog";
-import { useAdminAccess } from "@/lib/admin";
 import { api } from "@/lib/api";
 import styles from "./AppShell.module.css";
-
-function AdminStatus() {
-  const { unlocked, lock } = useAdminAccess();
-  const [open, setOpen] = useState(false);
-
-  if (unlocked) {
-    return (
-      <div className={styles.admin}>
-        <ShieldCheck size={15} />
-        <span className={styles.adminText}>Admin mode</span>
-        <IconButton label="Leave admin mode" onClick={lock}>
-          <Lock size={14} />
-        </IconButton>
-      </div>
-    );
-  }
-  return (
-    <>
-      <button type="button" className={styles.adminButton} onClick={() => setOpen(true)}>
-        <Lock size={14} />
-        Admin access
-      </button>
-      <AdminKeyDialog open={open} onClose={() => setOpen(false)} />
-    </>
-  );
-}
 
 export function AppShell() {
   const navigate = useNavigate();
@@ -89,9 +61,6 @@ export function AppShell() {
             Search inspector
           </NavLink>
         </nav>
-        <div className={styles.footer}>
-          <AdminStatus />
-        </div>
       </aside>
       <button
         type="button"

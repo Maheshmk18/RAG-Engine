@@ -5,7 +5,7 @@ from types import FrameType
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.db.mongo import create_client, ensure_indexes
-from app.runtime import build_embedder, build_pipeline, build_worker
+from app.runtime import build_chunk_store, build_embedder, build_pipeline, build_worker
 
 
 def main() -> None:
@@ -13,8 +13,11 @@ def main() -> None:
     configure_logging(settings.log_level, settings.log_json)
     client = create_client(settings)
     db = client[settings.mongodb_database]
-    ensure_indexes(db, settings)
-    worker = build_worker(settings, db, build_pipeline(settings, build_embedder(settings)))
+    ensure_indexes(db)
+    vector_store = build_chunk_store(settings, db)
+    worker = build_worker(
+        settings, db, build_pipeline(settings, build_embedder(settings), vector_store)
+    )
 
     stop = threading.Event()
 

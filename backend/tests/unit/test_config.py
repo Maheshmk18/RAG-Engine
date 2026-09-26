@@ -1,6 +1,3 @@
-import pytest
-from pydantic import ValidationError
-
 from app.core.config import Settings
 
 
@@ -9,17 +6,16 @@ def test_cors_origins_accept_comma_separated_values() -> None:
     assert settings.cors_origins == ["https://a.example.com", "https://b.example.com"]
 
 
-def test_short_admin_key_is_rejected() -> None:
-    with pytest.raises(ValidationError, match="ADMIN_API_KEY"):
-        Settings(admin_api_key="short")
-
-
-def test_blank_keys_count_as_unset() -> None:
-    settings = Settings(admin_api_key="  ", groq_api_key="")
-    assert settings.admin_api_key is None
+def test_blank_groq_key_counts_as_unset() -> None:
+    settings = Settings(groq_api_key="")
     assert settings.groq_api_key is None
 
 
-def test_vector_search_mode_is_validated() -> None:
-    with pytest.raises(ValidationError):
-        Settings(vector_search="elastic")
+def test_pinecone_settings_can_be_configured() -> None:
+    settings = Settings(
+        pinecone_api_key="test-key",
+        pinecone_index_name="test-index",
+        pinecone_namespace="test-namespace",
+    )
+    assert settings.pinecone_index_name == "test-index"
+    assert settings.pinecone_namespace == "test-namespace"

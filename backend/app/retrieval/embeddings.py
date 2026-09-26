@@ -1,8 +1,7 @@
-import threading
 from collections.abc import Sequence
-from typing import Protocol
+from typing import Any, Protocol
 
-from fastembed import TextEmbedding
+EMBEDDING_BATCH_SIZE = 64
 
 
 class Embedder(Protocol):
@@ -13,35 +12,58 @@ class Embedder(Protocol):
     def embed_query(self, text: str) -> list[float]: ...
 
 
-class FastEmbedEmbedder:
-    def __init__(self, model_name: str, dimensions: int, cache_dir: str | None = None) -> None:
-        self.model_name = model_name
-        self.dimensions = dimensions
-        self.cache_dir = cache_dir
-        self._model: TextEmbedding | None = None
-        self._lock = threading.Lock()
+class PineconeInferenceClient(Protocol):
+    def embed(
+        self,
+        *,
+        model: str,
+        inputs: list[str] | str,
+        parameters: dict[str, str],
+    ) -> Any: ...
 
-    @property
-    def model(self) -> TextEmbedding:
-        if self._model is None:
-            with self._lock:
-                if self._model is None:
-                    self._model = TextEmbedding(self.model_name, cache_dir=self.cache_dir)
-        return self._model
+
+class PineconeEmbedder:
+    def __init__(
+        self, client: PineconeInferenceClient, model: str, dimensions: int
+    ) -> None:
+        self.client = client
+        self.model = model
+        self.dimensions = dimensions
 
     def embed_documents(self, texts: Sequence[str]) -> list[list[float]]:
-        vectors = [vector.tolist() for vector in self.model.embed(list(texts), batch_size=32)]
+        vectors: list[list[float]] = []
+        for start in range(0, len(texts), EMBEDDING_BATCH_SIZE):
+            response = self.client.embed(
+                model=self.model,
+                inputs=list(texts[start : start + EMBEDDING_BATCH_SIZE]),
+                parameters={"input_type": "passage", "truncate": "END"},
+            )
+            vectors.extend(self._dense_values(response))
         self._check_dimensions(vectors)
         return vectors
 
     def embed_query(self, text: str) -> list[float]:
-        vector: list[float] = next(iter(self.model.query_embed(text))).tolist()
-        self._check_dimensions([vector])
-        return vector
+        response = self.client.embed(
+            model=self.model,
+            inputs=text,
+            parameters={"input_type": "query", "truncate": "END"},
+        )
+        vectors = self._dense_values(response)
+        if len(vectors) != 1:
+            raise ValueError(f"Pinecone returned {len(vectors)} query embeddings, expected one")
+        self._check_dimensions(vectors)
+        return vectors[0]
+
+    @staticmethod
+    def _dense_values(response: Any) -> list[list[float]]:
+        if response.vector_type != "dense":
+            raise ValueError(f"Pinecone returned {response.vector_type!r} embeddings, expected dense")
+        return [embedding.values for embedding in response.data]
 
     def _check_dimensions(self, vectors: list[list[float]]) -> None:
-        if vectors and len(vectors[0]) != self.dimensions:
+        if any(len(vector) != self.dimensions for vector in vectors):
+            actual = sorted({len(vector) for vector in vectors})
             raise ValueError(
-                f"{self.model_name} produced {len(vectors[0])} dimensions, "
-                f"expected {self.dimensions}"
+                f"Pinecone model {self.model} returned dimensions {actual}; "
+                f"expected {self.dimensions}. Match the embedding model and index dimensions."
             )

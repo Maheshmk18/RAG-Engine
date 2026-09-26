@@ -65,6 +65,8 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
     steps:
       - uses: actions/checkout@v5
 

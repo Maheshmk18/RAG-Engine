@@ -12,7 +12,6 @@ from app.generation.answerer import AnswerConfig, AnswerService
 from app.generation.llm import LLMUnavailableError
 from app.ingestion.pipeline import IngestionPipeline
 from app.retrieval.retriever import HybridRetriever, RetrievalConfig
-from app.retrieval.store import MongoChunkStore
 from app.services import documents as document_service
 from tests.conftest import OTHER_CLIENT_ID
 from tests.fakes import HashingEmbedder, OverlapReranker, ScriptedLLM
@@ -33,9 +32,9 @@ Employees may carry over up to 5 unused leave days into the next year.
 def llm(app: FastAPI, db: Database, settings: Settings) -> ScriptedLLM:
     embedder = HashingEmbedder()
     document = document_service.create_document(db, "leave.md", HANDBOOK, settings)
-    IngestionPipeline(embedder, 100, 10).process(db, document.id)
+    IngestionPipeline(embedder, 100, 10, app.state.chunk_store).process(db, document.id)
     retriever = HybridRetriever(
-        MongoChunkStore(app.state.database),
+        app.state.chunk_store,
         embedder,
         OverlapReranker(),
         RetrievalConfig(top_k=2, min_relevance=0.3),

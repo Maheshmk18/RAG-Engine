@@ -1,7 +1,6 @@
-import threading
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
 import numpy as np
 from pymongo.database import Database
@@ -74,19 +73,31 @@ class InMemoryChunkStore:
         return {chunk_id: self.records[chunk_id] for chunk_id in ids if chunk_id in self.records}
 
 
-class MongoChunkStore:
+class PineconeIndexClient(Protocol):
+    def upsert(self, *, vectors: list[dict[str, Any]], namespace: str) -> Any: ...
+
+    def query(
+        self,
+        *,
+        vector: list[float],
+        top_k: int,
+        namespace: str,
+        include_metadata: bool = False,
+    ) -> Any: ...
+
+    def delete(self, *, ids: list[str], namespace: str) -> Any: ...
+
+
+class PineconeChunkStore:
     def __init__(
         self,
         db: Database,
-        mode: Literal["local", "atlas"] = "local",
-        atlas_index: str = "chunk_embeddings",
+        index: PineconeIndexClient,
+        namespace: str,
     ) -> None:
         self.db = db
-        self.mode = mode
-        self.atlas_index = atlas_index
-        self._snapshot: InMemoryChunkStore | None = None
-        self._snapshot_version: int | None = None
-        self._lock = threading.Lock()
+        self.index = index
+        self.namespace = namespace
 
     def version(self) -> int:
         return current_corpus_version(self.db)
@@ -94,36 +105,34 @@ class MongoChunkStore:
     def all_chunks(self) -> list[ChunkRecord]:
         return [ChunkRecord.from_mongo(raw) for raw in self.db[CHUNKS].find({}, RECORD_FIELDS)]
 
-    def snapshot(self) -> InMemoryChunkStore:
-        version = self.version()
-        if self._snapshot is not None and self._snapshot_version == version:
-            return self._snapshot
-        with self._lock:
-            if self._snapshot is None or self._snapshot_version != version:
-                raws = list(self.db[CHUNKS].find({}, {**RECORD_FIELDS, "embedding": 1}))
-                self._snapshot = InMemoryChunkStore(
-                    [ChunkRecord.from_mongo(raw) for raw in raws],
-                    [raw["embedding"] for raw in raws],
+    def upsert_vectors(self, ids: Sequence[str], embeddings: Sequence[Sequence[float]]) -> None:
+        if len(ids) != len(embeddings):
+            raise ValueError("Pinecone vector IDs and embeddings must have the same length")
+        for start in range(0, len(ids), 100):
+            batch = [
+                {"id": ids[index], "values": list(embeddings[index])}
+                for index in range(start, min(start + 100, len(ids)))
+            ]
+            response = self.index.upsert(vectors=batch, namespace=self.namespace)
+            if response.upserted_count != len(batch):
+                raise RuntimeError(
+                    f"Pinecone upserted {response.upserted_count} of {len(batch)} vectors"
                 )
-                self._snapshot_version = version
-            return self._snapshot
+
+    def delete_vectors(self, ids: Sequence[str]) -> None:
+        for start in range(0, len(ids), 1000):
+            self.index.delete(ids=list(ids[start : start + 1000]), namespace=self.namespace)
 
     def vector_search(self, embedding: Sequence[float], limit: int) -> list[str]:
-        if self.mode == "local":
-            return self.snapshot().vector_search(embedding, limit)
-        pipeline: list[dict[str, Any]] = [
-            {
-                "$vectorSearch": {
-                    "index": self.atlas_index,
-                    "path": "embedding",
-                    "queryVector": list(embedding),
-                    "numCandidates": max(limit * 10, 100),
-                    "limit": limit,
-                }
-            },
-            {"$project": {"_id": 1}},
-        ]
-        return [raw["_id"] for raw in self.db[CHUNKS].aggregate(pipeline)]
+        if limit <= 0:
+            return []
+        response = self.index.query(
+            vector=list(embedding),
+            top_k=limit,
+            namespace=self.namespace,
+            include_metadata=False,
+        )
+        return [match.id for match in response.matches]
 
     def get_many(self, ids: Sequence[str]) -> dict[str, ChunkRecord]:
         if not ids:

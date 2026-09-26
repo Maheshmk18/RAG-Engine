@@ -13,9 +13,11 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestContextMiddleware
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.mongo import create_client, ensure_indexes
-from app.retrieval.store import MongoChunkStore
+from app.retrieval.embeddings import Embedder
+from app.retrieval.store import PineconeIndexClient
 from app.runtime import (
     build_answer_service,
+    build_chunk_store,
     build_embedder,
     build_llm,
     build_pipeline,
@@ -28,14 +30,18 @@ from app.runtime import (
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None,
+    pinecone_index: PineconeIndexClient | None = None,
+    embedder: Embedder | None = None,
+) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level, settings.log_json)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         logger.info("service starting", extra={"environment": settings.environment})
-        ensure_indexes(app.state.database, settings)
+        ensure_indexes(app.state.database)
         stop = threading.Event()
         worker_thread: threading.Thread | None = None
         if settings.warm_models_on_startup:
@@ -64,11 +70,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.mongo = client
     app.state.database = client[settings.mongodb_database]
-    app.state.embedder = build_embedder(settings)
-    app.state.pipeline = build_pipeline(settings, app.state.embedder)
+    app.state.embedder = embedder if embedder is not None else build_embedder(settings)
+    app.state.chunk_store = build_chunk_store(settings, app.state.database, pinecone_index)
+    app.state.pipeline = build_pipeline(settings, app.state.embedder, app.state.chunk_store)
     app.state.retriever = build_retriever(
         settings,
-        MongoChunkStore(app.state.database, settings.vector_search, settings.atlas_vector_index),
+        app.state.chunk_store,
         app.state.embedder,
         build_reranker(settings),
     )
@@ -82,7 +89,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         CORSMiddleware,
         allow_origins=settings.cors_origins,
         allow_methods=["GET", "POST", "PATCH", "DELETE"],
-        allow_headers=["Content-Type", "X-Request-ID", "X-Client-Id", "X-Admin-Key"],
+        allow_headers=["Content-Type", "X-Request-ID", "X-Client-Id"],
         expose_headers=["X-Request-ID"],
     )
     app.add_middleware(RequestContextMiddleware)

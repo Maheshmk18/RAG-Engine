@@ -14,39 +14,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-railway:
-    name: Deploy API and worker to Railway
+  deploy-render:
+    name: Deploy API and worker to Render
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
-    env:
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
     steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-
-      - name: Check Railway credentials
+      - name: Check Render deploy hooks
+        env:
+          RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+          RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$RAILWAY_TOKEN" ] || [ -z "$RAILWAY_PROJECT_ID" ]; then
-            echo "Add RAILWAY_TOKEN and RAILWAY_PROJECT_ID in GitHub Actions secrets."
+          if [ -z "$RENDER_API_DEPLOY_HOOK_URL" ] || [ -z "$RENDER_WORKER_DEPLOY_HOOK_URL" ]; then
+            echo "Add RENDER_API_DEPLOY_HOOK_URL and RENDER_WORKER_DEPLOY_HOOK_URL in GitHub Actions secrets."
             exit 1
           fi
 
-      - name: Install Railway CLI
-        run: npm install --global @railway/cli
-
-      - name: Deploy API and worker
+      - name: Trigger Render deploys for the tested commit
+        env:
+          RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+          RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          railway up ./backend --path-as-root --project "$RAILWAY_PROJECT_ID" --environment production --service api --ci
-          railway up ./backend --path-as-root --project "$RAILWAY_PROJECT_ID" --environment production --service worker --ci
+          curl --fail --show-error --silent --get \
+            --data-urlencode "ref=$DEPLOY_SHA" \
+            "$RENDER_API_DEPLOY_HOOK_URL"
+          curl --fail --show-error --silent --get \
+            --data-urlencode "ref=$DEPLOY_SHA" \
+            "$RENDER_WORKER_DEPLOY_HOOK_URL"
 
   deploy-vercel:
     name: Deploy frontend to Vercel
+    needs: deploy-render
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     env:
@@ -72,9 +70,10 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Build and deploy production frontend
+      - name: Link, build, and deploy production frontend
         working-directory: frontend
         run: |
+          vercel link --yes --project "$VERCEL_PROJECT_ID" --token="$VERCEL_TOKEN"
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           vercel build --prod --token="$VERCEL_TOKEN"
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"

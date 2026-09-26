@@ -1,4 +1,5 @@
 import logging
+import re
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -168,6 +169,26 @@ def unique_titles(passages: Sequence[Passage]) -> list[str]:
     return list(dict.fromkeys(passage.chunk.document_title for passage in passages))
 
 
+GREETING_QUESTIONS = {
+    "hi",
+    "hi there",
+    "hello",
+    "hello there",
+    "hey",
+    "hey there",
+    "good morning",
+    "good afternoon",
+    "good evening",
+}
+WELLBEING_QUESTIONS = {"how are you", "how are you doing", "how are you today"}
+DOCUMENT_COUNT_QUESTION = re.compile(r"\bhow many\s+(?:documents?|docs?|files?|policies?)\b")
+DOCUMENT_COUNT_SCOPE = re.compile(
+    r"\b(?:do you have|you have|do we have|we have|are there|are indexed|are uploaded|"
+    r"have you uploaded|indexed|uploaded|available|in (?:your|the) "
+    r"(?:knowledge base|repository|database|corpus))\b"
+)
+
+
 class AnswerService:
     def __init__(self, retriever: HybridRetriever, llm: LLMClient, config: AnswerConfig) -> None:
         self.retriever = retriever
@@ -182,6 +203,12 @@ class AnswerService:
 
     def stream(self, question: str, history: Sequence[ChatMessage] = ()) -> Iterator[AnswerEvent]:
         trace = Trace()
+        if quick_answer := self.quick_answer(question, trace):
+            yield RetrievalEvent(documents=[], passages=0)
+            yield TokenEvent(quick_answer.text)
+            yield DoneEvent(quick_answer)
+            return
+
         calls: list[LLMCall] = []
         standalone = self.standalone_question(question, history, trace, calls)
 
@@ -226,6 +253,41 @@ class AnswerService:
         if streamed and answer.text != draft:
             yield ReplaceEvent(answer.text)
         yield DoneEvent(answer)
+
+    def quick_answer(self, question: str, trace: Trace) -> Answer | None:
+        normalized = " ".join(re.sub(r"[^a-z0-9\s]", " ", question.casefold()).split())
+
+        if normalized in GREETING_QUESTIONS or normalized in {
+            "hi how are you",
+            "hey how are you",
+            "hello how are you",
+        }:
+            text = "Hi! I'm here to help with questions about your policies and documents."
+        elif normalized in WELLBEING_QUESTIONS:
+            text = (
+                "I'm doing well, thanks for asking! "
+                "I can help with questions about your documents."
+            )
+        elif DOCUMENT_COUNT_QUESTION.search(normalized) and (
+            normalized
+            in {"how many documents", "how many docs", "how many files", "how many policies"}
+            or DOCUMENT_COUNT_SCOPE.search(normalized)
+        ):
+            with trace.span("metadata.document_count"):
+                count = len(
+                    {chunk.document_id for chunk in self.retriever.store.all_chunks()}
+                )
+            noun = "document" if count == 1 else "documents"
+            text = f"I currently have {count} {noun} indexed and ready to search."
+        else:
+            return None
+
+        return Answer(
+            text=text,
+            status=AnswerStatus.ANSWERED,
+            standalone_question=question,
+            trace=trace.to_dict(),
+        )
 
     def standalone_question(
         self, question: str, history: Sequence[ChatMessage], trace: Trace, calls: list[LLMCall]

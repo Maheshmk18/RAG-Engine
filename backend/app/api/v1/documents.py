@@ -2,7 +2,7 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, File, Request, Response, UploadFile, status
 
-from app.api.deps import AdminAccess, DatabaseDep, SettingsDep, client_address
+from app.api.deps import DatabaseDep, SettingsDep, client_address
 from app.core.errors import RateLimitedError
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.schemas.documents import DocumentRead
@@ -18,7 +18,6 @@ def list_documents(db: DatabaseDep) -> list[DocumentRead]:
 
 @router.post("", response_model=DocumentRead, status_code=status.HTTP_202_ACCEPTED)
 def upload_document(
-    _: AdminAccess,
     request: Request,
     db: DatabaseDep,
     settings: SettingsDep,
@@ -48,10 +47,10 @@ def download_document(document_id: str, db: DatabaseDep) -> Response:
 
 
 @router.post("/{document_id}/reprocess", response_model=DocumentRead)
-def reprocess_document(document_id: str, _: AdminAccess, db: DatabaseDep) -> DocumentRead:
+def reprocess_document(document_id: str, db: DatabaseDep) -> DocumentRead:
     return DocumentRead.model_validate(document_service.reprocess_document(db, document_id))
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(document_id: str, _: AdminAccess, db: DatabaseDep) -> None:
-    document_service.delete_document(db, document_id)
+def delete_document(document_id: str, request: Request, db: DatabaseDep) -> None:
+    document_service.delete_document(db, document_id, request.app.state.chunk_store)

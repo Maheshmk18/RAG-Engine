@@ -7,11 +7,19 @@ from app.generation.citations import (
 
 
 def test_citation_numbers_support_groups() -> None:
-    assert citation_numbers("Rule one [1]. Rule two [2, 3]. Rule three [3][4].") == [1, 2, 3, 3, 4]
+    assert citation_numbers("Rule one [1]. Rule two [2, 3]. Rule three [3][4]. Rule four 【5】.") == [
+        1,
+        2,
+        3,
+        3,
+        4,
+        5,
+    ]
 
 
 def test_normalize_splits_grouped_citations() -> None:
     assert normalize_citations("Hotels cost 200 [1, 3].") == "Hotels cost 200 [1][3]."
+    assert normalize_citations("Hotels cost 200 【1, 3】.") == "Hotels cost 200 [1][3]."
 
 
 def test_claims_skip_lead_ins_headings_and_fragments() -> None:

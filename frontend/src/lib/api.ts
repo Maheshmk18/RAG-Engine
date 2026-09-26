@@ -9,7 +9,6 @@ import type {
 
 const API_ROOT = `${(import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "")}/api/v1`;
 const CLIENT_KEY = "erag.client";
-const ADMIN_KEY = "erag.admin";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -50,16 +49,9 @@ export function clientId(): string {
   return read(() => localStorage, CLIENT_KEY) ?? fallbackClientId;
 }
 
-export const adminKey = {
-  get: () => read(() => sessionStorage, ADMIN_KEY),
-  set: (value: string | null) => write(() => sessionStorage, ADMIN_KEY, value),
-};
-
 export async function request(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set("X-Client-Id", clientId());
-  const key = adminKey.get();
-  if (key && !headers.has("X-Admin-Key")) headers.set("X-Admin-Key", key);
   if (init.body && !(init.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
@@ -81,9 +73,6 @@ const send = (method: string, body?: unknown): RequestInit => ({
 });
 
 export const api = {
-  verifyAdminKey: (key: string) =>
-    json<void>("/admin/verify", { method: "POST", headers: { "X-Admin-Key": key } }),
-
   documents: () => json<DocumentItem[]>("/documents"),
   uploadDocument: (file: File) => {
     const body = new FormData();

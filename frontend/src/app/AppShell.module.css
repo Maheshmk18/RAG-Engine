@@ -66,48 +66,6 @@
   box-shadow: inset 0 0 0 1px var(--border);
 }
 
-.footer {
-  padding: var(--space-2);
-  border-top: 1px solid var(--border);
-}
-
-.adminButton {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  width: 100%;
-  height: 32px;
-  padding: 0 var(--space-2);
-  border: 0;
-  border-radius: var(--radius);
-  background: transparent;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-  text-align: left;
-}
-
-.adminButton:hover {
-  background: var(--surface-hover);
-  color: var(--text);
-}
-
-.admin {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  height: 32px;
-  padding: 0 2px 0 var(--space-2);
-  border-radius: var(--radius);
-  background: var(--accent-soft);
-  color: var(--accent-text);
-  font-size: var(--text-sm);
-}
-
-.adminText {
-  flex: 1;
-  font-weight: 500;
-}
-
 .main {
   display: flex;
   flex-direction: column;

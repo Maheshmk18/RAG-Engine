@@ -1,25 +1,51 @@
 import logging
 import time
+from typing import cast
 
+from pinecone import Pinecone
 from pymongo.database import Database
 
 from app.core.config import Settings
-from app.db.mongo import EMBEDDING_DIMENSIONS
 from app.generation.answerer import AnswerConfig, AnswerService
 from app.generation.llm import GroqClient, LLMClient, UnconfiguredClient
 from app.ingestion.pipeline import IngestionPipeline
 from app.ingestion.worker import IngestionWorker
-from app.retrieval.embeddings import Embedder, FastEmbedEmbedder
+from app.retrieval.embeddings import Embedder, PineconeEmbedder, PineconeInferenceClient
 from app.retrieval.rerank import CrossEncoderReranker, Reranker
 from app.retrieval.retriever import HybridRetriever, RetrievalConfig
-from app.retrieval.store import ChunkStore
+from app.retrieval.store import ChunkStore, PineconeChunkStore, PineconeIndexClient
 
 logger = logging.getLogger(__name__)
 
 
-def build_embedder(settings: Settings) -> FastEmbedEmbedder:
-    return FastEmbedEmbedder(
-        settings.embedding_model, EMBEDDING_DIMENSIONS, settings.model_cache_dir
+def build_embedder(settings: Settings) -> PineconeEmbedder:
+    if settings.pinecone_api_key is None:
+        raise ValueError("PINECONE_API_KEY is required for Pinecone embeddings")
+    client = Pinecone(api_key=settings.pinecone_api_key.get_secret_value())
+    return PineconeEmbedder(
+        cast(PineconeInferenceClient, client.inference),
+        settings.pinecone_embedding_model,
+        settings.pinecone_embedding_dimensions,
+    )
+
+
+def build_pinecone_index(settings: Settings) -> PineconeIndexClient:
+    if settings.pinecone_api_key is None:
+        raise ValueError("PINECONE_API_KEY is required to use the Pinecone vector index")
+    client = Pinecone(api_key=settings.pinecone_api_key.get_secret_value())
+    index_factory = getattr(client, "index", None)
+    if index_factory is None:
+        index_factory = getattr(client, "Index")
+    return cast(PineconeIndexClient, index_factory(settings.pinecone_index_name))
+
+
+def build_chunk_store(
+    settings: Settings, db: Database, index: PineconeIndexClient | None = None
+) -> PineconeChunkStore:
+    return PineconeChunkStore(
+        db,
+        index if index is not None else build_pinecone_index(settings),
+        settings.pinecone_namespace,
     )
 
 
@@ -27,8 +53,14 @@ def build_reranker(settings: Settings) -> CrossEncoderReranker:
     return CrossEncoderReranker(settings.reranker_model, settings.model_cache_dir)
 
 
-def build_pipeline(settings: Settings, embedder: Embedder) -> IngestionPipeline:
-    return IngestionPipeline(embedder, settings.chunk_max_words, settings.chunk_overlap_words)
+def build_pipeline(
+    settings: Settings,
+    embedder: Embedder,
+    vector_store: PineconeChunkStore | None = None,
+) -> IngestionPipeline:
+    return IngestionPipeline(
+        embedder, settings.chunk_max_words, settings.chunk_overlap_words, vector_store
+    )
 
 
 def build_worker(settings: Settings, db: Database, pipeline: IngestionPipeline) -> IngestionWorker:

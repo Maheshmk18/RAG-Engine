@@ -92,34 +92,3 @@
   margin-right: auto;
   font-size: var(--text-sm);
 }
-
-.keyForm {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.keyForm > button {
-  justify-self: end;
-}
-
-.locked {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: 20px 22px;
-  border: 1.5px dashed var(--border-strong);
-  border-radius: var(--radius-lg);
-  background: var(--surface-sunken);
-  color: var(--text-muted);
-}
-
-.locked > div {
-  flex: 1;
-  display: grid;
-  gap: 2px;
-}
-
-.lockedTitle {
-  color: var(--text);
-  font-weight: 500;
-}

@@ -231,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
             "chunks": len(store.all_chunks()),
         },
         "config": {
-            "embedding_model": settings.embedding_model,
+            "embedding_model": settings.pinecone_embedding_model,
             "reranker_model": settings.reranker_model,
             "answer_model": settings.answer_model if args.suite == "full" else None,
             "judge_model": args.judge_model if args.suite == "full" else None,

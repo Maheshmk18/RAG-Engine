@@ -27,21 +27,23 @@ Meals are reimbursed up to 60 per day for domestic travel.
 
 @pytest.fixture
 def worker(app: FastAPI) -> IngestionWorker:
-    pipeline = IngestionPipeline(HashingEmbedder(), max_words=120, overlap_words=20)
+    pipeline = IngestionPipeline(
+        HashingEmbedder(), max_words=120, overlap_words=20, vector_store=app.state.chunk_store
+    )
     return IngestionWorker(
         app.state.database, pipeline, max_attempts=2, stale_after_seconds=600, poll_seconds=0
     )
 
 
-def upload(client: TestClient, headers: dict[str, str], name: str, data: bytes) -> dict[str, Any]:
-    response = client.post("/api/v1/documents", files={"file": (name, data)}, headers=headers)
+def upload(client: TestClient, name: str, data: bytes) -> dict[str, Any]:
+    response = client.post("/api/v1/documents", files={"file": (name, data)})
     return {**response.json(), "http_status": response.status_code}
 
 
 def test_upload_is_queued_then_indexed_by_worker(
-    client: TestClient, admin: dict[str, str], worker: IngestionWorker, db: Database
+    client: TestClient, worker: IngestionWorker, db: Database
 ) -> None:
-    created = upload(client, admin, "travel.md", POLICY)
+    created = upload(client, "travel.md", POLICY)
     assert created["http_status"] == 202
     assert created["status"] == "pending"
 
@@ -57,28 +59,23 @@ def test_upload_is_queued_then_indexed_by_worker(
     assert current_corpus_version(db) == 1
 
 
-def test_changing_documents_requires_the_admin_key(
-    client: TestClient, admin: dict[str, str]
-) -> None:
-    assert upload(client, {}, "travel.md", POLICY)["http_status"] == 403
-    assert upload(client, {"X-Admin-Key": "y" * 24}, "travel.md", POLICY)["http_status"] == 403
-
-    created = upload(client, admin, "travel.md", POLICY)
+def test_document_management_is_open(client: TestClient) -> None:
+    created = upload(client, "travel.md", POLICY)
+    assert created["http_status"] == 202
     path = f"/api/v1/documents/{created['id']}"
-    assert client.delete(path).status_code == 403
-    assert client.post(f"{path}/reprocess").status_code == 403
-    assert client.delete(path, headers=admin).status_code == 204
+    assert client.post(f"{path}/reprocess").status_code == 200
+    assert client.delete(path).status_code == 204
 
 
-def test_uploads_are_rate_limited(app: FastAPI, client: TestClient, admin: dict[str, str]) -> None:
+def test_uploads_are_rate_limited(app: FastAPI, client: TestClient) -> None:
     app.state.upload_limiter = SlidingWindowRateLimiter(limit=1, window_seconds=3600)
-    assert upload(client, admin, "travel.md", POLICY)["http_status"] == 202
-    limited = upload(client, admin, "other.md", b"# Other\n\nSome text.")
+    assert upload(client, "travel.md", POLICY)["http_status"] == 202
+    limited = upload(client, "other.md", b"# Other\n\nSome text.")
     assert limited["http_status"] == 429
 
 
-def test_anyone_can_read_documents(client: TestClient, admin: dict[str, str]) -> None:
-    upload(client, admin, "travel.md", POLICY)
+def test_anyone_can_read_documents(client: TestClient) -> None:
+    upload(client, "travel.md", POLICY)
     listed = client.get("/api/v1/documents").json()
     assert [item["filename"] for item in listed] == ["travel.md"]
     download = client.get(f"/api/v1/documents/{listed[0]['id']}/file")
@@ -86,9 +83,9 @@ def test_anyone_can_read_documents(client: TestClient, admin: dict[str, str]) ->
     assert "travel.md" in download.headers["content-disposition"]
 
 
-def test_duplicate_upload_is_rejected(client: TestClient, admin: dict[str, str]) -> None:
-    upload(client, admin, "travel.md", POLICY)
-    duplicate = upload(client, admin, "copy-of-travel.md", POLICY)
+def test_duplicate_upload_is_rejected(client: TestClient) -> None:
+    upload(client, "travel.md", POLICY)
+    duplicate = upload(client, "copy-of-travel.md", POLICY)
     assert duplicate["http_status"] == 409
     assert duplicate["error"]["code"] == "duplicate_document"
 
@@ -102,22 +99,22 @@ def test_duplicate_upload_is_rejected(client: TestClient, admin: dict[str, str])
     ],
 )
 def test_invalid_uploads_are_rejected(
-    client: TestClient, admin: dict[str, str], name: str, data: bytes
+    client: TestClient, name: str, data: bytes
 ) -> None:
-    assert upload(client, admin, name, data)["http_status"] == 415
+    assert upload(client, name, data)["http_status"] == 415
 
 
 def test_oversized_upload_is_rejected(
-    client: TestClient, admin: dict[str, str], settings: Settings
+    client: TestClient, settings: Settings
 ) -> None:
     data = b"a " * (settings.max_upload_bytes // 2 + 1)
-    assert upload(client, admin, "huge.txt", data)["http_status"] == 413
+    assert upload(client, "huge.txt", data)["http_status"] == 413
 
 
 def test_unreadable_document_fails_permanently(
-    client: TestClient, admin: dict[str, str], worker: IngestionWorker
+    client: TestClient, worker: IngestionWorker
 ) -> None:
-    created = upload(client, admin, "broken.pdf", b"%PDF-1.4 truncated")
+    created = upload(client, "broken.pdf", b"%PDF-1.4 truncated")
     worker.run_once()
     document = client.get(f"/api/v1/documents/{created['id']}").json()
     assert document["status"] == "failed"
@@ -126,12 +123,11 @@ def test_unreadable_document_fails_permanently(
 
 def test_transient_failures_are_retried(
     client: TestClient,
-    admin: dict[str, str],
     worker: IngestionWorker,
     db: Database,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    created = upload(client, admin, "travel.md", POLICY)
+    created = upload(client, "travel.md", POLICY)
     calls = {"count": 0}
     original = worker.pipeline.embedder.embed_documents
 
@@ -149,9 +145,9 @@ def test_transient_failures_are_retried(
 
 
 def test_stale_processing_documents_are_reclaimed(
-    client: TestClient, admin: dict[str, str], worker: IngestionWorker, db: Database
+    client: TestClient, worker: IngestionWorker, db: Database
 ) -> None:
-    created = upload(client, admin, "travel.md", POLICY)
+    created = upload(client, "travel.md", POLICY)
     assert worker.claim_next() == created["id"]
     assert worker.claim_next() is None
     worker.stale_after = worker.stale_after * 0
@@ -160,11 +156,11 @@ def test_stale_processing_documents_are_reclaimed(
 
 
 def test_delete_removes_chunks_and_file(
-    client: TestClient, admin: dict[str, str], worker: IngestionWorker, db: Database
+    client: TestClient, worker: IngestionWorker, db: Database
 ) -> None:
-    created = upload(client, admin, "travel.md", POLICY)
+    created = upload(client, "travel.md", POLICY)
     worker.run_once()
-    response = client.delete(f"/api/v1/documents/{created['id']}", headers=admin)
+    response = client.delete(f"/api/v1/documents/{created['id']}")
     assert response.status_code == 204
     assert db[CHUNKS].count_documents({}) == 0
     assert db["document_files.files"].count_documents({}) == 0
@@ -172,10 +168,10 @@ def test_delete_removes_chunks_and_file(
 
 
 def test_reprocess_requeues_document(
-    client: TestClient, admin: dict[str, str], worker: IngestionWorker
+    client: TestClient, worker: IngestionWorker
 ) -> None:
-    created = upload(client, admin, "travel.md", POLICY)
+    created = upload(client, "travel.md", POLICY)
     worker.run_once()
-    response = client.post(f"/api/v1/documents/{created['id']}/reprocess", headers=admin)
+    response = client.post(f"/api/v1/documents/{created['id']}/reprocess")
     assert response.json()["status"] == "pending"
     assert worker.run_once() is True

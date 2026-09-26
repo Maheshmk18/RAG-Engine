@@ -19,8 +19,12 @@ services:
       ENVIRONMENT: development
       MONGODB_URL: mongodb://mongo:27017
       MONGODB_DATABASE: enterprise_rag
+      PINECONE_API_KEY: ${PINECONE_API_KEY:-}
+      PINECONE_INDEX_NAME: ${PINECONE_INDEX_NAME:-enterprise-rag}
+      PINECONE_NAMESPACE: ${PINECONE_NAMESPACE:-enterprise-rag}
+      PINECONE_EMBEDDING_MODEL: ${PINECONE_EMBEDDING_MODEL:-multilingual-e5-large}
+      PINECONE_EMBEDDING_DIMENSIONS: ${PINECONE_EMBEDDING_DIMENSIONS:-1024}
       CORS_ORIGINS: http://localhost:5173
-      ADMIN_API_KEY: ${ADMIN_API_KEY:-}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
     ports:
       - "8000:8000"
