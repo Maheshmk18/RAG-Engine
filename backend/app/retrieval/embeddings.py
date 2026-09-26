@@ -57,7 +57,9 @@ class PineconeEmbedder:
     @staticmethod
     def _dense_values(response: Any) -> list[list[float]]:
         if response.vector_type != "dense":
-            raise ValueError(f"Pinecone returned {response.vector_type!r} embeddings, expected dense")
+            raise ValueError(
+                f"Pinecone returned {response.vector_type!r} embeddings, expected dense"
+            )
         return [embedding.values for embedding in response.data]
 
     def _check_dimensions(self, vectors: list[list[float]]) -> None:

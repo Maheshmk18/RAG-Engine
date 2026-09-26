@@ -33,9 +33,8 @@ def build_pinecone_index(settings: Settings) -> PineconeIndexClient:
     if settings.pinecone_api_key is None:
         raise ValueError("PINECONE_API_KEY is required to use the Pinecone vector index")
     client = Pinecone(api_key=settings.pinecone_api_key.get_secret_value())
-    index_factory = getattr(client, "index", None)
-    if index_factory is None:
-        index_factory = getattr(client, "Index")
+    index_factory_name = "index" if hasattr(client, "index") else "Index"
+    index_factory = getattr(client, index_factory_name)
     return cast(PineconeIndexClient, index_factory(settings.pinecone_index_name))
 
 

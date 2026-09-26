@@ -105,6 +105,7 @@ def evaluate_retrieval(
         latency["rerank"].append(trace.duration_of("retrieval.rerank"))
         row: dict[str, Any] = {"id": case.id, "category": case.category, "question": case.question}
         row["retrieved"] = rankings["hybrid_rerank"]
+        row["retrieval_rankings"] = rankings
         if case.answerable:
             for strategy, ranked in rankings.items():
                 scores.setdefault(strategy, []).append(score_rankings(ranked, case.expected))
@@ -247,7 +248,8 @@ def main(argv: list[str] | None = None) -> int:
     baseline = None
     if args.baseline.exists():
         baseline = json.loads(args.baseline.read_text(encoding="utf-8"))["metrics"]
-    gate = evaluate_gate(metrics, load_thresholds(args.thresholds), baseline)
+    comparison_baseline = None if args.update_baseline else baseline
+    gate = evaluate_gate(metrics, load_thresholds(args.thresholds), comparison_baseline)
     summary = markdown_summary(report, gate)
     print(summary)
     if step_summary := os.environ.get("GITHUB_STEP_SUMMARY"):

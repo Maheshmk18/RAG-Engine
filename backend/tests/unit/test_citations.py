@@ -7,7 +7,8 @@ from app.generation.citations import (
 
 
 def test_citation_numbers_support_groups() -> None:
-    assert citation_numbers("Rule one [1]. Rule two [2, 3]. Rule three [3][4]. Rule four 【5】.") == [
+    text = "Rule one [1]. Rule two [2, 3]. Rule three [3][4]. Rule four 【5】."
+    assert citation_numbers(text) == [
         1,
         2,
         3,

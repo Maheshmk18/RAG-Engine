@@ -70,35 +70,57 @@ class HybridRetriever:
             span["results"] = len(lexical)
         with trace.span("retrieval.fusion") as span:
             fused = reciprocal_rank_fusion([dense, lexical], k=config.rrf_k)
-            candidates = fused[: config.rerank_candidates]
-            records = self.store.get_many([chunk_id for chunk_id, _ in candidates])
-            candidates = [
-                (chunk_id, score) for chunk_id, score in candidates if chunk_id in records
-            ]
-            span["candidates"] = len(candidates)
+            fused_scores = dict(fused)
+            candidate_ids = list(
+                dict.fromkeys(
+                    [chunk_id for chunk_id, _ in fused[: config.rerank_candidates]]
+                    + dense[: config.top_k]
+                    + lexical[: config.top_k]
+                )
+            )
+            records = self.store.get_many(candidate_ids)
+            candidate_ids = [chunk_id for chunk_id in candidate_ids if chunk_id in records]
+            span["candidates"] = len(candidate_ids)
 
         with trace.span("retrieval.rerank") as span:
-            texts = [records[chunk_id].contextual_text for chunk_id, _ in candidates]
+            texts = [records[chunk_id].contextual_text for chunk_id in candidate_ids]
             relevance = self.reranker.score(query, texts)
             dense_ranks, lexical_ranks = rank_of(dense), rank_of(lexical)
+            reranked = sorted(
+                zip(candidate_ids, relevance, strict=True),
+                key=lambda item: item[1],
+                reverse=True,
+            )
+            candidate_set = set(candidate_ids)
+            final_ranking = reciprocal_rank_fusion(
+                [
+                    [chunk_id for chunk_id in dense if chunk_id in candidate_set],
+                    [chunk_id for chunk_id in lexical if chunk_id in candidate_set],
+                    [chunk_id for chunk_id, _ in reranked],
+                ],
+                k=config.rrf_k,
+                weights=[50.0, 0.5, 1.0],
+            )
+            final_scores = dict(final_ranking)
+            relevance_by_id = dict(zip(candidate_ids, relevance, strict=True))
             scored = sorted(
                 (
                     Passage(
                         chunk=records[chunk_id],
-                        relevance=score,
-                        fused_score=round(fused_score, 6),
+                        relevance=relevance_by_id[chunk_id],
+                        fused_score=round(fused_scores[chunk_id], 6),
                         dense_rank=dense_ranks.get(chunk_id),
                         lexical_rank=lexical_ranks.get(chunk_id),
                     )
-                    for (chunk_id, fused_score), score in zip(candidates, relevance, strict=True)
+                    for chunk_id in candidate_ids
                 ),
-                key=lambda passage: passage.relevance,
+                key=lambda passage: final_scores[passage.chunk.id],
                 reverse=True,
             )
-            best = scored[0].relevance if scored else 0.0
+            best = max(relevance, default=0.0)
             on_topic = best >= config.min_relevance
             passages = scored[: config.top_k] if on_topic else []
             span["kept"] = len(passages)
             span["best_relevance"] = best
 
-        return RetrievalResult(query=query, passages=passages, candidates=len(candidates))
+        return RetrievalResult(query=query, passages=passages, candidates=len(candidate_ids))
