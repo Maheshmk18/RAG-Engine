@@ -62,9 +62,13 @@ class IngestionPipeline:
         prepared = self.prepare(document.title, document.filename, read_file(db, document))
 
         old_ids = [raw["_id"] for raw in db[CHUNKS].find({"document_id": document.id}, {"_id": 1})]
+        new_ids = [
+            str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal)))
+            for draft in prepared.drafts
+        ]
         chunk_records = [
             {
-                "_id": str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal))),
+                "_id": chunk_id,
                 "document_id": document.id,
                 "document_title": prepared.title,
                 "ordinal": draft.ordinal,
@@ -73,9 +77,8 @@ class IngestionPipeline:
                 "text": draft.text,
                 "word_count": draft.word_count,
             }
-            for draft in prepared.drafts
+            for chunk_id, draft in zip(new_ids, prepared.drafts, strict=True)
         ]
-        new_ids = [record["_id"] for record in chunk_records]
         self.vector_store.upsert_vectors(new_ids, prepared.embeddings)
         if chunk_records:
             db[CHUNKS].bulk_write(
