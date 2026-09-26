@@ -98,22 +98,16 @@ def test_duplicate_upload_is_rejected(client: TestClient) -> None:
         ("empty.txt", b""),
     ],
 )
-def test_invalid_uploads_are_rejected(
-    client: TestClient, name: str, data: bytes
-) -> None:
+def test_invalid_uploads_are_rejected(client: TestClient, name: str, data: bytes) -> None:
     assert upload(client, name, data)["http_status"] == 415
 
 
-def test_oversized_upload_is_rejected(
-    client: TestClient, settings: Settings
-) -> None:
+def test_oversized_upload_is_rejected(client: TestClient, settings: Settings) -> None:
     data = b"a " * (settings.max_upload_bytes // 2 + 1)
     assert upload(client, "huge.txt", data)["http_status"] == 413
 
 
-def test_unreadable_document_fails_permanently(
-    client: TestClient, worker: IngestionWorker
-) -> None:
+def test_unreadable_document_fails_permanently(client: TestClient, worker: IngestionWorker) -> None:
     created = upload(client, "broken.pdf", b"%PDF-1.4 truncated")
     worker.run_once()
     document = client.get(f"/api/v1/documents/{created['id']}").json()
@@ -167,9 +161,7 @@ def test_delete_removes_chunks_and_file(
     assert current_corpus_version(db) == 2
 
 
-def test_reprocess_requeues_document(
-    client: TestClient, worker: IngestionWorker
-) -> None:
+def test_reprocess_requeues_document(client: TestClient, worker: IngestionWorker) -> None:
     created = upload(client, "travel.md", POLICY)
     worker.run_once()
     response = client.post(f"/api/v1/documents/{created['id']}/reprocess")

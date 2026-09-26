@@ -24,13 +24,19 @@ jobs:
         working-directory: backend
     env:
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
       MODEL_CACHE_DIR: ${{ github.workspace }}/.model-cache
     steps:
-      - name: Require an API key
-        if: env.GROQ_API_KEY == ''
+      - name: Require API keys
+        if: env.GROQ_API_KEY == '' || env.PINECONE_API_KEY == ''
         working-directory: .
         run: |
-          echo "::error::Add a GROQ_API_KEY repository secret to run the answer quality evaluation."
+          if [ -z "$GROQ_API_KEY" ]; then
+            echo "::error::Add a GROQ_API_KEY repository secret to run the answer quality evaluation."
+          fi
+          if [ -z "$PINECONE_API_KEY" ]; then
+            echo "::error::Add a PINECONE_API_KEY repository secret to run the answer quality evaluation."
+          fi
           exit 1
 
       - uses: actions/checkout@v5

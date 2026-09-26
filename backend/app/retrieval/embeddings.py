@@ -23,9 +23,7 @@ class PineconeInferenceClient(Protocol):
 
 
 class PineconeEmbedder:
-    def __init__(
-        self, client: PineconeInferenceClient, model: str, dimensions: int
-    ) -> None:
+    def __init__(self, client: PineconeInferenceClient, model: str, dimensions: int) -> None:
         self.client = client
         self.model = model
         self.dimensions = dimensions

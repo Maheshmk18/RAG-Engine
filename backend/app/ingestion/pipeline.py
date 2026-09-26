@@ -61,9 +61,7 @@ class IngestionPipeline:
         started = time.perf_counter()
         prepared = self.prepare(document.title, document.filename, read_file(db, document))
 
-        old_ids = [
-            raw["_id"] for raw in db[CHUNKS].find({"document_id": document.id}, {"_id": 1})
-        ]
+        old_ids = [raw["_id"] for raw in db[CHUNKS].find({"document_id": document.id}, {"_id": 1})]
         chunk_records = [
             {
                 "_id": str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal))),

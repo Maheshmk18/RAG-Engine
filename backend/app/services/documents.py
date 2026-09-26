@@ -98,9 +98,7 @@ def read_file(db: Database, document: DocumentRecord) -> bytes:
 
 def delete_document(db: Database, document_id: str, vector_store: PineconeChunkStore) -> None:
     document = get_document(db, document_id)
-    chunk_ids = [
-        raw["_id"] for raw in db[CHUNKS].find({"document_id": document_id}, {"_id": 1})
-    ]
+    chunk_ids = [raw["_id"] for raw in db[CHUNKS].find({"document_id": document_id}, {"_id": 1})]
     vector_store.delete_vectors(chunk_ids)
     db[CHUNKS].delete_many({"document_id": document_id})
     db[DOCUMENTS].delete_one({"_id": document_id})

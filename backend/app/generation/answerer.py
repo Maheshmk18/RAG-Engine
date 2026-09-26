@@ -264,19 +264,14 @@ class AnswerService:
         }:
             text = "Hi! I'm here to help with questions about your policies and documents."
         elif normalized in WELLBEING_QUESTIONS:
-            text = (
-                "I'm doing well, thanks for asking! "
-                "I can help with questions about your documents."
-            )
+            text = "I'm doing well, thanks for asking! I can help with questions about your documents."
         elif DOCUMENT_COUNT_QUESTION.search(normalized) and (
             normalized
             in {"how many documents", "how many docs", "how many files", "how many policies"}
             or DOCUMENT_COUNT_SCOPE.search(normalized)
         ):
             with trace.span("metadata.document_count"):
-                count = len(
-                    {chunk.document_id for chunk in self.retriever.store.all_chunks()}
-                )
+                count = len({chunk.document_id for chunk in self.retriever.store.all_chunks()})
             noun = "document" if count == 1 else "documents"
             text = f"I currently have {count} {noun} indexed and ready to search."
         else:
