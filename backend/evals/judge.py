@@ -46,7 +46,7 @@ class FaithfulnessJudge:
 
     def grade(self, answer: str, citations: Sequence[Citation]) -> Verdict | None:
         completion = self.llm.complete(
-            self.messages(answer, citations), model=self.model, temperature=0.0, max_tokens=1500
+            self.messages(answer, citations), model=self.model, temperature=0.0, max_tokens=500
         )
         match = JSON_OBJECT.search(completion.text)
         if match is None:

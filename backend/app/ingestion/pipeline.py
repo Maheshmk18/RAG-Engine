@@ -63,8 +63,7 @@ class IngestionPipeline:
 
         old_ids = [raw["_id"] for raw in db[CHUNKS].find({"document_id": document.id}, {"_id": 1})]
         new_ids = [
-            str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal)))
-            for draft in prepared.drafts
+            str(uuid.uuid5(uuid.UUID(document.id), str(draft.ordinal))) for draft in prepared.drafts
         ]
         chunk_records = [
             {
