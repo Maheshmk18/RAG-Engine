@@ -15,32 +15,27 @@ concurrency:
 
 jobs:
   deploy-render:
-    name: Deploy API and worker to Render
+    name: Deploy backend to Render
     if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Check Render deploy hooks
         env:
           RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
-          RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -z "$RENDER_API_DEPLOY_HOOK_URL" ] || [ -z "$RENDER_WORKER_DEPLOY_HOOK_URL" ]; then
-            echo "Add RENDER_API_DEPLOY_HOOK_URL and RENDER_WORKER_DEPLOY_HOOK_URL in GitHub Actions secrets."
+          if [ -z "$RENDER_API_DEPLOY_HOOK_URL" ]; then
+            echo "Add RENDER_API_DEPLOY_HOOK_URL in GitHub Actions secrets."
             exit 1
           fi
 
       - name: Trigger Render deploys for the tested commit
         env:
           RENDER_API_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
-          RENDER_WORKER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_WORKER_DEPLOY_HOOK_URL }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           curl --fail --show-error --silent --get \
             --data-urlencode "ref=$DEPLOY_SHA" \
             "$RENDER_API_DEPLOY_HOOK_URL"
-          curl --fail --show-error --silent --get \
-            --data-urlencode "ref=$DEPLOY_SHA" \
-            "$RENDER_WORKER_DEPLOY_HOOK_URL"
 
   deploy-vercel:
     name: Deploy frontend to Vercel

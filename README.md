@@ -166,7 +166,7 @@ The retrieval evaluation calls Pinecone's hosted embedding API, so add `PINECONE
 
 ## Deployment
 
-The backend runs on Render as an API and an ingestion worker built from the same Dockerfile, the frontend runs on Vercel, MongoDB Atlas stores application data, and Pinecone stores passage vectors. [`render.yaml`](render.yaml) defines both backend services. GitHub Actions runs CI and deploys the tested `main` commit to Render and Vercel only after CI succeeds.
+The backend runs as one free Render web service, with document ingestion handled by a worker thread inside the API process. The frontend runs on Vercel, MongoDB Atlas stores application data, and Pinecone stores passage vectors. [`render.yaml`](render.yaml) defines the Render service. GitHub Actions runs CI and deploys the tested `main` commit to Render and Vercel only after CI succeeds.
 
 **MongoDB Atlas**
 
@@ -184,13 +184,13 @@ Pinecone applies upserts asynchronously, so a newly indexed document can take a 
 
 **Render**
 
-1. Push the repository to GitHub. Before creating the Render Blueprint, open `render.yaml` and set both `region` values to the Render region nearest your Atlas cluster. The example uses Oregon.
-2. In Render, choose **New > Blueprint**, connect this repository, and create the services from `render.yaml`. It creates a public `enterprise-rag-api` web service and a private `enterprise-rag-worker` background worker. Both use the `backend/Dockerfile`; the worker starts with `python -m app.worker`.
-3. When Render asks for values marked `sync: false`, provide the Atlas `MONGODB_URL`, Pinecone `PINECONE_API_KEY`, Groq `GROQ_API_KEY`, and API `CORS_ORIGINS`. Enter the same Atlas URL and Pinecone key for the API and worker. Set the initial `CORS_ORIGINS` to `http://localhost:5173`; replace it with the Vercel production origin after deploying the frontend. Do not put secrets in `render.yaml`.
-4. Open each service's **Connect > Outbound** page and add the listed IP ranges to Atlas **Network Access**. Generate a public domain for `enterprise-rag-api`. Its health check is `/api/v1/health/ready` (already configured in the Blueprint); the worker does not need a public domain. Confirm both services are running and that the API logs show a successful MongoDB connection.
-5. Open each service's **Settings > Deploy Hook** and create a hook. Add the API and worker hook URLs to GitHub Actions secrets as described below. The Blueprint disables automatic Render Git deploys so the tested GitHub Actions workflow controls production releases.
+1. Push the repository to GitHub. The Blueprint is configured for the free web service plan and the `oregon` region.
+2. In Render, choose **New > Blueprint**, connect this repository, and create the single `enterprise-rag-api` web service from `render.yaml`. If the page is still showing the payment modal for the old paid configuration, close it and start the Blueprint flow again after the updated commit is on GitHub.
+3. When Render asks for values marked `sync: false`, provide the Atlas `MONGODB_URL`, Pinecone `PINECONE_API_KEY`, Groq `GROQ_API_KEY`, and `CORS_ORIGINS`. Start with `http://localhost:5173`; replace it with the Vercel production origin after deploying the frontend. Do not put secrets in `render.yaml`.
+4. Generate the API's public domain. Its health check is `/api/v1/health/ready`. In MongoDB Atlas **Network Access**, allow the Render service's outbound IP ranges. Confirm the service is running and its logs show a successful MongoDB connection.
+5. Open **Settings > Deploy Hook** on the API service and add its URL to the GitHub Actions secret `RENDER_API_DEPLOY_HOOK_URL`. The Blueprint disables automatic Render Git deploys so GitHub Actions deploys the tested commit.
 
-`render.yaml` allocates 1 CPU / 2 GB RAM to the API and 0.5 CPU / 512 MB RAM to the worker. Both are paid compute plans; check Render's current pricing before creating the services. The worker is separate so document ingestion continues independently of web requests. Add `GROQ_API_KEY` and `CORS_ORIGINS` only to the API; the worker does not need them. Other backend options have defaults listed in [`backend/.env.example`](backend/.env.example).
+The free Render web service has 512 MB RAM and spins down after 15 minutes without traffic; waking it can take about a minute. This demo setup runs API requests and document ingestion in one service, so ingestion and reranking may be slow or hit memory limits. It is suitable for trying the project, not sustained production use. See [Render's free service limits](https://render.com/docs/free). The Render worker service was removed because background workers do not have a free plan. Other backend options have defaults listed in [`backend/.env.example`](backend/.env.example).
 
 **Vercel**
 
@@ -200,17 +200,17 @@ Pinecone applies upserts asynchronously, so a newly indexed document can take a 
 
 **GitHub Actions deployment**
 
-[`ci.yml`](.github/workflows/ci.yml) runs on pull requests and pushes to `main` or `development`. [`deploy.yml`](.github/workflows/deploy.yml) runs only after CI succeeds for a push to `main`; it triggers Render deploy hooks for the API and worker, then builds and deploys the frontend to Vercel. The Render hooks deploy the same commit that passed CI.
+[`ci.yml`](.github/workflows/ci.yml) runs on pull requests and pushes to `main` or `development`. [`deploy.yml`](.github/workflows/deploy.yml) runs only after CI succeeds for a push to `main`; it triggers the Render API deploy hook, then builds and deploys the frontend to Vercel. The workflow deploys the same commit that passed CI.
 
-1. In GitHub, open **Settings > Secrets and variables > Actions > New repository secret**. Add `PINECONE_API_KEY` for the retrieval quality CI job; `RENDER_API_DEPLOY_HOOK_URL` and `RENDER_WORKER_DEPLOY_HOOK_URL` from the two Render services; and `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` from your Vercel account and project. Keep these private.
+1. In GitHub, open **Settings > Secrets and variables > Actions > New repository secret**. Add `PINECONE_API_KEY` for the retrieval quality CI job; `RENDER_API_DEPLOY_HOOK_URL` from the Render API service; and `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID` from your Vercel account and project. Keep these private.
 2. Set Vercel's project root to `frontend` and create a Vercel access token. Find the organization/team ID and project ID in Vercel's project settings. The workflow links the frontend project with these IDs, pulls its Production variables, runs `vercel build --prod`, and deploys the prebuilt output.
 3. Disable automatic Git deployments in Vercel if enabled. Render auto-deploy is already disabled in the Blueprint. Push or merge to `main`; GitHub runs CI first and deploys only after it succeeds. Pull requests run CI but do not deploy production.
 
-The local `backend/.env` file is ignored by Git. Add the Atlas URL and Pinecone key to the Render API and worker environment variables; add the Pinecone key to GitHub Actions secrets for CI. Never commit `.env` files or paste credentials into workflow files.
+The local `backend/.env` file is ignored by Git. Add the Atlas URL, Pinecone key, and Groq key to the Render API environment variables; add the Pinecone key to GitHub Actions secrets for CI. Never commit `.env` files or paste credentials into workflow files.
 
 **Load the demo handbook**
 
-After the API, worker and frontend are live and CORS is configured, open **Documents** in the app and upload the files from [`knowledge_base/`](knowledge_base). The worker indexes each uploaded file. Check the document statuses before trying questions.
+After the API and frontend are live and CORS is configured, open **Documents** in the app and upload the files from [`knowledge_base/`](knowledge_base). The embedded worker indexes each uploaded file while the Render service is awake. Check the document statuses before trying questions.
 
 **Access model**
 

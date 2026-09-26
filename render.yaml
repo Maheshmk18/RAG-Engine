@@ -2,7 +2,7 @@ services:
   - type: web
     name: enterprise-rag-api
     runtime: docker
-    plan: 1c-2g
+    plan: free
     region: oregon
     rootDir: backend
     dockerfilePath: ./Dockerfile
@@ -32,33 +32,7 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
-
-  - type: worker
-    name: enterprise-rag-worker
-    runtime: docker
-    plan: 0.5c-512mb
-    region: oregon
-    rootDir: backend
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: python -m app.worker
-    autoDeployTrigger: off
-    envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: LOG_JSON
+      - key: EMBEDDED_WORKER
         value: "true"
-      - key: MONGODB_URL
-        sync: false
-      - key: MONGODB_DATABASE
-        value: enterprise_rag
-      - key: PINECONE_API_KEY
-        sync: false
-      - key: PINECONE_INDEX_NAME
-        value: enterprise-rag-1024
-      - key: PINECONE_NAMESPACE
-        value: enterprise-rag
-      - key: PINECONE_EMBEDDING_MODEL
-        value: multilingual-e5-large
-      - key: PINECONE_EMBEDDING_DIMENSIONS
-        value: "1024"
+      - key: WARM_MODELS_ON_STARTUP
+        value: "false"
