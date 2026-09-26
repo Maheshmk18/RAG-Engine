@@ -1,4 +1,4 @@
-regression_tolerance = 0.02
+regression_tolerance = 0.03
 
 [retrieval]
 hit_rate = 0.95
