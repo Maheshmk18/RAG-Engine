@@ -264,7 +264,7 @@ class AnswerService:
         }:
             text = "Hi! I'm here to help with questions about your policies and documents."
         elif normalized in WELLBEING_QUESTIONS:
-            text = "I'm doing well, thanks for asking! I can help with questions about your documents."
+            text = "I'm doing well! I can help with your documents."
         elif DOCUMENT_COUNT_QUESTION.search(normalized) and (
             normalized
             in {"how many documents", "how many docs", "how many files", "how many policies"}
