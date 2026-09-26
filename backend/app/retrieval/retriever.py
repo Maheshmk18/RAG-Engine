@@ -71,13 +71,7 @@ class HybridRetriever:
         with trace.span("retrieval.fusion") as span:
             fused = reciprocal_rank_fusion([dense, lexical], k=config.rrf_k)
             fused_scores = dict(fused)
-            candidate_ids = list(
-                dict.fromkeys(
-                    [chunk_id for chunk_id, _ in fused[: config.rerank_candidates]]
-                    + dense[: config.top_k]
-                    + lexical[: config.top_k]
-                )
-            )
+            candidate_ids = [chunk_id for chunk_id, _ in fused[: config.rerank_candidates]]
             records = self.store.get_many(candidate_ids)
             candidate_ids = [chunk_id for chunk_id in candidate_ids if chunk_id in records]
             span["candidates"] = len(candidate_ids)
