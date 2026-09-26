@@ -32,6 +32,6 @@ If an employee becomes ill during annual leave, they can ask for the affected da
 
 Employees may request up to 20 days of unpaid leave per year once their annual leave balance has been used. Unpaid leave requires approval from both the line manager and People Operations and does not accrue annual leave.
 
-## Leave During Notice Period
+### Leave During Notice Period
 
 Employees who resign may be asked to take outstanding leave during their notice period. Any accrued but untaken leave at the end of employment is paid out in the final salary payment. Leave taken in excess of the accrued amount is deducted from the final payment.
