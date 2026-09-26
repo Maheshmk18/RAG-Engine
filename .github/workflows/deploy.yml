@@ -65,10 +65,9 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      - name: Link, build, and deploy production frontend
+      - name: Build and deploy production frontend
         working-directory: frontend
         run: |
-          vercel link --yes --project "$VERCEL_PROJECT_ID" --token="$VERCEL_TOKEN"
           vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           vercel build --prod --token="$VERCEL_TOKEN"
           vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
