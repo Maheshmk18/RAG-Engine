@@ -91,32 +91,16 @@ class HybridRetriever:
                 key=lambda item: item[1],
                 reverse=True,
             )
-            candidate_set = set(candidate_ids)
-            final_ranking = reciprocal_rank_fusion(
-                [
-                    [chunk_id for chunk_id in dense if chunk_id in candidate_set],
-                    [chunk_id for chunk_id in lexical if chunk_id in candidate_set],
-                    [chunk_id for chunk_id, _ in reranked],
-                ],
-                k=config.rrf_k,
-                weights=[50.0, 0.5, 1.0],
-            )
-            final_scores = dict(final_ranking)
-            relevance_by_id = dict(zip(candidate_ids, relevance, strict=True))
-            scored = sorted(
-                (
-                    Passage(
-                        chunk=records[chunk_id],
-                        relevance=relevance_by_id[chunk_id],
-                        fused_score=round(fused_scores[chunk_id], 6),
-                        dense_rank=dense_ranks.get(chunk_id),
-                        lexical_rank=lexical_ranks.get(chunk_id),
-                    )
-                    for chunk_id in candidate_ids
-                ),
-                key=lambda passage: final_scores[passage.chunk.id],
-                reverse=True,
-            )
+            scored = [
+                Passage(
+                    chunk=records[chunk_id],
+                    relevance=score,
+                    fused_score=round(fused_scores[chunk_id], 6),
+                    dense_rank=dense_ranks.get(chunk_id),
+                    lexical_rank=lexical_ranks.get(chunk_id),
+                )
+                for chunk_id, score in reranked
+            ]
             best = max(relevance, default=0.0)
             on_topic = best >= config.min_relevance
             passages = scored[: config.top_k] if on_topic else []
